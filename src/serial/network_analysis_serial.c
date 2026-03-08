@@ -31,8 +31,8 @@ static int MIN_F;
 /* ── Timing ──────────────────────────────────── */
 static double now() {
     struct timespec t;
-    clock_gettime(CLOCK_MONOTONIC, &t);
-    return t.tv_sec + t.tv_nsec * 1e-9;
+    clock_gettime(CLOCK_MONOTONIC, &t);        /* read high-resolution monotonic clock — unaffected by system time changes */
+    return t.tv_sec + t.tv_nsec * 1e-9;       /* convert to fractional seconds (e.g. 1.426743s) */
 }
 
 /* ── Row parsing — zero-malloc stack-based parser ───
@@ -72,8 +72,8 @@ static inline const char *fs(Row *r, int c) { return (c>=0&&c<r->n)             
 
 /* ── Column detection ────────────────────────── */
 static void detect_columns(const char *hdr) {
-    Row r; char *h = strdup(hdr);
-    h[strcspn(h, "\n")] = '\0';
+    Row r; char *h = strdup(hdr);              /* duplicate header string so we can modify it without altering the original */
+    h[strcspn(h, "\n")] = '\0';               /* find first newline character and replace it with null terminator */
     parse(h, &r);
 
     struct { const char *n; int *t; } m[] = {
@@ -95,7 +95,7 @@ static void detect_columns(const char *hdr) {
             if (strcmp(r.buf[i], m[j].n) == 0) { *m[j].t = i; break; }
     }
 
-    if (C_LABEL < 0) { fprintf(stderr, "ERROR: 'label' not found\n"); exit(1); }
+    if (C_LABEL < 0) { fprintf(stderr, "ERROR: 'label' not found\n"); exit(1); }  /* terminate immediately — cannot compute accuracy without label column */
     MIN_F = C_LABEL + 1;
 
     printf("Columns: total=%d | label=%d | state=%d | dttl=%d | ct_state_ttl=%d\n\n",
@@ -184,10 +184,10 @@ typedef struct { char name[32]; long att, norm; } ProtoStat;
 static ProtoStat ptable[HASH_SIZE];
 
 static ProtoStat *proto_slot(const char *p) {
-    unsigned h = 5381;
-    for (const char *c = p; *c; c++) h = h*33 + (unsigned char)*c;
-    h %= HASH_SIZE;
-    if (!ptable[h].name[0]) strncpy(ptable[h].name, p, 31);
+    unsigned h = 5381;                                              /* DJB2 hash seed — chosen for low collision rate on short strings */
+    for (const char *c = p; *c; c++) h = h*33 + (unsigned char)*c; /* DJB2 hash: multiply-add loop over each character of the protocol name */
+    h %= HASH_SIZE;                                                 /* map hash to table index within [0, HASH_SIZE-1] */
+    if (!ptable[h].name[0]) strncpy(ptable[h].name, p, 31);        /* first visit to this slot: store protocol name, capped at 31 chars */
     return &ptable[h];
 }
 
@@ -202,8 +202,8 @@ int main(int argc, char *argv[]) {
            REPEAT_FACTOR, 82332 * REPEAT_FACTOR);
 
     /* detect columns from header */
-    FILE *fp = fopen(file, "r");
-    if (!fp) { perror(file); return 1; }
+    FILE *fp = fopen(file, "r");                /* open dataset CSV file in read mode */
+    if (!fp) { perror(file); return 1; }        /* perror prints OS-level error message (e.g. "No such file") then exit */
     char ln[MAX_LINE];
     if (!fgets(ln, MAX_LINE, fp)) {   /* FIX: check return value */
         fprintf(stderr, "Empty file\n"); fclose(fp); return 1;
@@ -212,18 +212,18 @@ int main(int argc, char *argv[]) {
 
     /* count records */
     int nrec = 0;
-    while (fgets(ln, MAX_LINE, fp)) if (ln[0] != '\n') nrec++;
-    fclose(fp);
+    while (fgets(ln, MAX_LINE, fp)) if (ln[0] != '\n') nrec++;  /* count non-empty lines to know records per pass before main loop */
+    fclose(fp);                                                  /* close file after counting — will reopen once per repeat in main loop */
     printf("Records per pass: %d\n\n", nrec);
 
     /* main detection loop */
     long tot = 0, TP = 0, TN = 0, FP = 0, FN = 0;
     double sse = 0.0;
 
-    double t0 = now();
+    double t0 = now();                          /* record start time — measured after file pre-scan so I/O setup is excluded */
 
     for (int rep = 0; rep < REPEAT_FACTOR; rep++) {
-        fp = fopen(file, "r");
+        fp = fopen(file, "r");                  /* reopen file at start of each repeat — serial reads from disk every pass */
         if (!fp) { perror(file); return 1; }
 
         if (!fgets(ln, MAX_LINE, fp)) {   /* FIX: check return value */
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]) {
         }
 
         while (fgets(ln, MAX_LINE, fp)) {
-            ln[strcspn(ln, "\n")] = '\0';
+            ln[strcspn(ln, "\n")] = '\0';       /* strip trailing newline before parsing — prevents it being included in field values */
             if (!ln[0]) continue;
 
             Row r;
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
             sse += (double)(pred - act) * (pred - act);
             tot++;
 
-            ProtoStat *ps = proto_slot(fs(&r, C_PROTO));
+            ProtoStat *ps = proto_slot(fs(&r, C_PROTO));  /* look up or create hash table entry for this record's protocol */
             if (pred) ps->att++;  else ps->norm++;
 
             /* confusion matrix — first pass only */
@@ -256,14 +256,14 @@ int main(int argc, char *argv[]) {
 
             free_row(&r);
         }
-        fclose(fp);
+        fclose(fp);   /* close file at end of each repeat pass before reopening next iteration */
     }
 
-    double elapsed     = now() - t0;
+    double elapsed     = now() - t0;              /* total wall-clock time for all REPEAT_FACTOR passes */
     double single_time = elapsed / REPEAT_FACTOR;
     long   single_pass = tot / REPEAT_FACTOR;
 
-    double rmse      = sqrt(sse / tot);
+    double rmse      = sqrt(sse / tot);           /* root mean squared error: sqrt(sum((pred-actual)²) / total) */
     double accuracy  = 100.0 * (TP + TN) / single_pass;
     double precision = (TP+FP) > 0 ? 100.0*TP/(TP+FP) : 0.0;
     double recall    = (TP+FN) > 0 ? 100.0*TP/(TP+FN) : 0.0;
@@ -311,10 +311,10 @@ int main(int argc, char *argv[]) {
     else                       printf("Status: POOR\n");
 
     /* save single-pass time for speedup comparison */
-    FILE *tf = fopen("../../results/serial_time.txt", "w");
-    if (!tf) tf = fopen("serial_time.txt", "w");
+    FILE *tf = fopen("../../results/serial_time.txt", "w");  /* try project-relative path first */
+    if (!tf) tf = fopen("serial_time.txt", "w");             /* fallback to current directory if run from different location */
     if (tf) {
-        fprintf(tf, "%.6f\n", single_time);
+        fprintf(tf, "%.6f\n", single_time);                  /* write single-pass time so OpenMP/MPI can read it for speedup calculation */
         fclose(tf);
     }
     printf("\nSingle-pass time: %.4fs  (saved for speedup comparison)\n",

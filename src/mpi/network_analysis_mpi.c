@@ -119,7 +119,7 @@ static void detect_columns(const char *hdr, int rank) {
 
     if (C_LABEL < 0) {
         fprintf(stderr, "[rank %d] ERROR: 'label' column not found\n", rank);
-        MPI_Abort(MPI_COMM_WORLD, 1);
+        MPI_Abort(MPI_COMM_WORLD, 1);   /* terminate all ranks immediately — label column is required */
     }
     MIN_F = C_LABEL + 1;
 
@@ -210,11 +210,11 @@ static int detect(Row *r) {
  * MAIN
  * ═══════════════════════════════════════════════ */
 int main(int argc, char *argv[]) {
-    MPI_Init(&argc, &argv);
+    MPI_Init(&argc, &argv);                /* initialise MPI environment — must be called before any other MPI function */
 
     int rank, nprocs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);  /* get this process's unique rank (0 to nprocs-1) */
+    MPI_Comm_size(MPI_COMM_WORLD, &nprocs); /* get total number of processes in the communicator */
 
     const char *file = argc > 1 ? argv[1] :
         "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
@@ -232,17 +232,17 @@ int main(int argc, char *argv[]) {
 
     if (rank == 0) {
         FILE *fp = fopen(file, "r");
-        if (!fp) { perror(file); MPI_Abort(MPI_COMM_WORLD, 1); }
+        if (!fp) { perror(file); MPI_Abort(MPI_COMM_WORLD, 1); }  /* abort all ranks if rank 0 cannot open the dataset file */
 
         if (!fgets(header, MAX_LINE, fp)) {
             fprintf(stderr, "Empty file\n");
-            fclose(fp); MPI_Abort(MPI_COMM_WORLD, 1);
+            fclose(fp); MPI_Abort(MPI_COMM_WORLD, 1);  /* abort all ranks — cannot proceed with empty file */
         }
 
         all_lines = malloc(sizeof(*all_lines) * MAX_RECORDS);
         if (!all_lines) {
             fprintf(stderr, "Out of memory\n");
-            fclose(fp); MPI_Abort(MPI_COMM_WORLD, 1);
+            fclose(fp); MPI_Abort(MPI_COMM_WORLD, 1);  /* abort all ranks — not enough memory to load dataset */
         }
 
         char ln[MAX_LINE];
@@ -257,8 +257,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* ── Step 2: Broadcast header + record count to all ranks ── */
-    MPI_Bcast(header,       MAX_LINE, MPI_CHAR, 0, MPI_COMM_WORLD);
-    MPI_Bcast(&total_lines, 1,        MPI_INT,  0, MPI_COMM_WORLD);
+    MPI_Bcast(header,       MAX_LINE, MPI_CHAR, 0, MPI_COMM_WORLD);  /* broadcast CSV header from rank 0 to all ranks so every rank can detect column indices */
+    MPI_Bcast(&total_lines, 1,        MPI_INT,  0, MPI_COMM_WORLD);  /* broadcast total record count so all ranks can compute their slice boundaries */
 
     /* All ranks detect column indices from the same header */
     detect_columns(header, rank);
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
     char *my_lines = malloc((size_t)my_count * MAX_LINE);
     if (!my_lines) {
         fprintf(stderr, "[rank %d] Out of memory\n", rank);
-        MPI_Abort(MPI_COMM_WORLD, 1);
+        MPI_Abort(MPI_COMM_WORLD, 1);   /* abort all ranks — worker could not allocate its receive buffer */
     }
 
     if (rank == 0) {
@@ -282,7 +282,7 @@ int main(int argc, char *argv[]) {
             int d_count = base + (dest < rem ? 1 : 0);
             int d_start = dest * base + (dest < rem ? dest : rem);
             MPI_Send(all_lines[d_start], d_count * MAX_LINE,
-                     MPI_CHAR, dest, 0, MPI_COMM_WORLD);
+                     MPI_CHAR, dest, 0, MPI_COMM_WORLD);  /* send this rank's slice of raw CSV lines to destination rank */
         }
         /* Rank 0 keeps its own slice */
         memcpy(my_lines, all_lines[my_start], (size_t)my_count * MAX_LINE);
@@ -290,7 +290,7 @@ int main(int argc, char *argv[]) {
         all_lines = NULL;
     } else {
         MPI_Recv(my_lines, my_count * MAX_LINE,
-                 MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                 MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);  /* worker rank receives its assigned slice of CSV lines from rank 0 */
     }
 
     /* ── Step 5: Each rank processes its chunk REPEAT_FACTOR times ─ */
@@ -298,7 +298,7 @@ int main(int argc, char *argv[]) {
     double local_sse = 0.0;
     long   local_tot = 0;
 
-    MPI_Barrier(MPI_COMM_WORLD);   /* sync before timing */
+    MPI_Barrier(MPI_COMM_WORLD);   /* sync all ranks before timing — ensures no rank starts early */
     double t0 = now();
 
     for (int rep = 0; rep < REPEAT_FACTOR; rep++) {
@@ -328,7 +328,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);   /* sync after timing */
+    MPI_Barrier(MPI_COMM_WORLD);   /* sync all ranks after processing — elapsed time measured from the slowest rank */
     double elapsed = now() - t0;
 
     free(my_lines);
@@ -339,13 +339,13 @@ int main(int argc, char *argv[]) {
     long   global_tot = 0;
     double max_elapsed;
 
-    MPI_Reduce(&local_TP,  &global_TP,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&local_TN,  &global_TN,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&local_FP,  &global_FP,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&local_FN,  &global_FN,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&local_sse, &global_sse, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&local_tot, &global_tot, 1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(&elapsed,   &max_elapsed,1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_TP,  &global_TP,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);  /* sum all ranks' true positive counts into rank 0 */
+    MPI_Reduce(&local_TN,  &global_TN,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);  /* sum all ranks' true negative counts into rank 0 */
+    MPI_Reduce(&local_FP,  &global_FP,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);  /* sum all ranks' false positive counts into rank 0 */
+    MPI_Reduce(&local_FN,  &global_FN,  1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);  /* sum all ranks' false negative counts into rank 0 */
+    MPI_Reduce(&local_sse, &global_sse, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);  /* sum all ranks' squared errors for global RMSE calculation */
+    MPI_Reduce(&local_tot, &global_tot, 1, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD);  /* sum all ranks' processed record counts for throughput */
+    MPI_Reduce(&elapsed,   &max_elapsed,1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);  /* take the slowest rank's time as the true wall-clock elapsed time */
 
     /* ── Step 7: Rank 0 computes and prints all results ─────── */
     if (rank == 0) {
@@ -415,6 +415,6 @@ int main(int argc, char *argv[]) {
         printf("Total time (x%d): %.4fs\n", REPEAT_FACTOR, max_elapsed);
     }
 
-    MPI_Finalize();
+    MPI_Finalize();   /* shut down MPI environment — must be the last MPI call */
     return 0;
 }
