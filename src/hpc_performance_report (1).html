@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EC7207 — HPC Network Traffic Analysis: Performance Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0b0f14;
+    color: #e0e6f0;
+    font-family: 'Rajdhani', sans-serif;
+    padding: 40px 32px;
+    min-height: 100vh;
+  }
+
+  .mono { font-family: 'Share Tech Mono', monospace; }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 36px;
+    position: relative;
+  }
+  .header::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+    margin: 16px auto 0;
+  }
+  .header .tag {
+    font-size: 11px;
+    letter-spacing: 5px;
+    color: #00d4ff;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+  }
+  .header .sub {
+    font-size: 13px;
+    color: #5a6a7a;
+    margin-top: 6px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* ── Grid layouts ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  /* ── Card ── */
+  .card {
+    background: #111820;
+    border: 1px solid #1e2a38;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #4a5a6a;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #1e2a38;
+  }
+
+  /* ── Baseline metrics ── */
+  .baseline-grid {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr 1fr 1fr;
+    gap: 0 32px;
+    align-items: center;
+  }
+  .baseline-main { border-right: 1px solid #1e2a38; padding-right: 32px; }
+  .metric-val { font-size: 28px; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+  .metric-unit { font-size: 13px; color: #4a5a6a; }
+  .metric-label { font-size: 10px; letter-spacing: 2px; color: #4a5a6a; text-transform: uppercase; margin-bottom: 4px; }
+  .metric-small { font-size: 18px; font-weight: 700; font-family: 'Share Tech Mono', monospace; }
+
+  /* ── Table ── */
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .results-table th {
+    padding: 10px 14px;
+    text-align: right;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #4a5a6a;
+    font-weight: 600;
+    background: #0b0f14;
+    text-transform: uppercase;
+  }
+  .results-table th:first-child { text-align: left; }
+  .results-table td {
+    padding: 10px 14px;
+    text-align: right;
+    border-top: 1px solid #161e28;
+  }
+  .results-table td:first-child { text-align: left; }
+  .results-table tr:hover td { background: #141c26; }
+  .impl-serial  { color: #8b949e; font-weight: 600; }
+  .impl-openmp  { color: #00d4ff; font-weight: 600; }
+  .impl-mpi     { color: #ff6b35; font-weight: 600; }
+  .good  { color: #3fb950; font-weight: 700; }
+  .warn  { color: #d29922; }
+  .poor  { color: #f85149; }
+  .dim   { color: #4a5a6a; }
+
+  /* ── Chart containers ── */
+  .chart-wrap {
+    position: relative;
+    height: 300px;
+  }
+
+  /* ── Observation cards ── */
+  .obs-card {
+    background: #111820;
+    border: 1px solid #1e2a38;
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .obs-card .obs-title { font-size: 11px; letter-spacing: 2px; color: #4a5a6a; text-transform: uppercase; margin-bottom: 6px; }
+  .obs-card .obs-val { font-size: 22px; font-weight: 700; font-family: 'Share Tech Mono', monospace; margin-bottom: 2px; }
+  .obs-card .obs-sub { font-size: 11px; color: #4a5a6a; margin-bottom: 8px; }
+  .obs-card .obs-note { font-size: 12px; color: #5a6a7a; line-height: 1.5; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 28px;
+    padding: 14px 20px;
+    background: #111820;
+    border: 1px solid #1e2a38;
+    border-radius: 8px;
+    font-size: 11px;
+    color: #4a5a6a;
+    font-family: 'Share Tech Mono', monospace;
+    line-height: 1.8;
+  }
+
+  /* ── Print friendly ── */
+  @media print {
+    body { background: #fff; color: #000; padding: 20px; }
+    .card, .obs-card { border: 1px solid #ccc; }
+    canvas { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="tag">EC7207 · High Performance Computing · Group Report</div>
+  <h1>Network Traffic Analysis — Parallel Performance Results</h1>
+  <div class="sub">EG/2021/4426 &nbsp;·&nbsp; EG/2021/4432 &nbsp;·&nbsp; EG/2021/4433 &nbsp;·&nbsp; Dataset: UNSW-NB15 · 700,001 records · Repeat ×50</div>
+</div>
+
+<!-- Serial Baseline -->
+<div class="card">
+  <div class="card-title">Serial Baseline</div>
+  <div class="baseline-grid">
+    <div class="baseline-main">
+      <div class="metric-label">Single-pass time</div>
+      <div class="metric-val" style="color:#e0e6f0">0.4267<span class="metric-unit">s</span></div>
+      <div class="metric-label" style="margin-top:4px">Throughput</div>
+      <div style="font-size:14px; color:#8b949e; font-family:'Share Tech Mono',monospace;">1,640,315 rec/s</div>
+    </div>
+    <div>
+      <div class="metric-label">Accuracy</div>
+      <div class="metric-small" style="color:#3fb950">97.07%</div>
+    </div>
+    <div>
+      <div class="metric-label">Precision</div>
+      <div class="metric-small" style="color:#d29922">53.15%</div>
+    </div>
+    <div>
+      <div class="metric-label">Recall</div>
+      <div class="metric-small" style="color:#d29922">65.09%</div>
+    </div>
+    <div>
+      <div class="metric-label">F1 Score</div>
+      <div class="metric-small" style="color:#d29922">58.52%</div>
+    </div>
+    <div>
+      <div class="metric-label">RMSE</div>
+      <div class="metric-small" style="color:#8b949e">0.1711</div>
+    </div>
+  </div>
+</div>
+
+<!-- Results Table -->
+<div class="card">
+  <div class="card-title">Complete Results — All Implementations</div>
+  <table class="results-table">
+    <thead>
+      <tr>
+        <th>Implementation</th>
+        <th>Threads/Procs</th>
+        <th>Time (1 pass)</th>
+        <th>Speedup</th>
+        <th>Efficiency</th>
+        <th>Throughput</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="impl-serial">Serial</span></td>
+        <td class="dim">—</td>
+        <td>0.4267s</td>
+        <td>1.00×</td>
+        <td>100.0%</td>
+        <td class="dim">1,640,315 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-openmp">OpenMP</span></td><td>1</td><td>0.3621s</td><td>1.18×</td><td class="warn">117.9%</td><td class="dim">1,933,166 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-openmp">OpenMP</span></td><td>2</td><td>0.1969s</td><td>2.17×</td><td class="warn">108.4%</td><td class="dim">3,554,596 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-openmp">OpenMP</span></td><td>4</td><td>0.0994s</td><td class="good">4.29×</td><td class="warn">107.3%</td><td class="dim">7,042,292 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-openmp">OpenMP</span></td><td>8</td><td>0.0819s</td><td class="good">5.21×</td><td>65.2%</td><td class="dim">8,547,020 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-mpi">MPI</span></td><td>1</td><td>0.3587s</td><td>1.19×</td><td class="warn">119.0%</td><td class="dim">1,951,625 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-mpi">MPI</span></td><td>2</td><td>0.1834s</td><td>2.33×</td><td class="warn">116.3%</td><td class="dim">3,816,795 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-mpi">MPI</span></td><td>4</td><td>0.0993s</td><td class="good">4.30×</td><td class="warn">107.4%</td><td class="dim">7,049,346 rec/s</td>
+      </tr>
+      <tr>
+        <td><span class="impl-mpi">MPI</span></td><td>8</td><td>0.0713s</td><td class="good">5.99×</td><td>74.9%</td><td class="dim">9,818,794 rec/s</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Speedup vs Threads / Processes</div>
+    <div class="chart-wrap"><canvas id="chartSpeedup"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Parallel Efficiency (%)</div>
+    <div class="chart-wrap"><canvas id="chartEfficiency"></canvas></div>
+  </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">Execution Time per Pass (seconds)</div>
+    <div class="chart-wrap"><canvas id="chartTime"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Throughput (records / second)</div>
+    <div class="chart-wrap"><canvas id="chartThroughput"></canvas></div>
+  </div>
+</div>
+
+<!-- Key Observations -->
+<div class="grid-4" style="margin-bottom:20px">
+  <div class="obs-card" style="border-left:3px solid #ff6b35">
+    <div class="obs-title">Best Speedup</div>
+    <div class="obs-val" style="color:#ff6b35">5.99×</div>
+    <div class="obs-sub">MPI · 8 processes</div>
+    <div class="obs-note">MPI outperforms OpenMP at 8 workers due to independent memory spaces — zero shared-bus contention.</div>
+  </div>
+  <div class="obs-card" style="border-left:3px solid #00d4ff">
+    <div class="obs-title">OpenMP Best</div>
+    <div class="obs-val" style="color:#00d4ff">5.21×</div>
+    <div class="obs-sub">OpenMP · 8 threads</div>
+    <div class="obs-note">Shared memory parallelism scales well to 4T (107% efficiency). Memory bandwidth contention limits gains at 8T.</div>
+  </div>
+  <div class="obs-card" style="border-left:3px solid #3fb950">
+    <div class="obs-title">Peak Throughput</div>
+    <div class="obs-val" style="color:#3fb950">9.82M</div>
+    <div class="obs-sub">records/sec · MPI 8P</div>
+    <div class="obs-note">6× improvement over serial baseline of 1.64M rec/s — sufficient for real-time network monitoring.</div>
+  </div>
+  <div class="obs-card" style="border-left:3px solid #d29922">
+    <div class="obs-title">Correctness</div>
+    <div class="obs-val" style="color:#d29922">100%</div>
+    <div class="obs-sub">All implementations match</div>
+    <div class="obs-note">Identical confusion matrix across all runs. RMSE=0.1711 consistent. Parallelisation is mathematically correct.</div>
+  </div>
+</div>
+
+<!-- Confusion Matrix -->
+<div class="card">
+  <div class="card-title">Confusion Matrix — All Implementations (First Pass, 700,001 records)</div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items:center;">
+    <div style="font-family:'Share Tech Mono',monospace; font-size:13px; line-height:2;">
+      <div style="color:#4a5a6a; margin-bottom:8px;">              Predicted</div>
+      <div style="color:#4a5a6a;">Actual     Normal    Attack</div>
+      <div style="border-top:1px solid #1e2a38; padding-top:8px;">
+        <span style="color:#8b949e">Normal </span>&nbsp;&nbsp;
+        <span style="color:#3fb950">665,043</span>&nbsp;&nbsp;&nbsp;
+        <span style="color:#f85149">12,743</span>&nbsp;&nbsp;
+        <span style="color:#4a5a6a">(FP)</span>
+      </div>
+      <div>
+        <span style="color:#8b949e">Attack </span>&nbsp;&nbsp;&nbsp;&nbsp;
+        <span style="color:#f85149">7,756</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <span style="color:#3fb950">14,459</span>&nbsp;&nbsp;
+        <span style="color:#4a5a6a">(TP)</span>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-family:'Share Tech Mono',monospace;">
+      <div style="background:#0b0f14; border:1px solid #1e2a38; border-radius:8px; padding:12px; text-align:center;">
+        <div style="font-size:10px; color:#4a5a6a; letter-spacing:2px; margin-bottom:4px;">TRUE POS</div>
+        <div style="font-size:20px; color:#3fb950; font-weight:700;">14,459</div>
+      </div>
+      <div style="background:#0b0f14; border:1px solid #1e2a38; border-radius:8px; padding:12px; text-align:center;">
+        <div style="font-size:10px; color:#4a5a6a; letter-spacing:2px; margin-bottom:4px;">TRUE NEG</div>
+        <div style="font-size:20px; color:#3fb950; font-weight:700;">665,043</div>
+      </div>
+      <div style="background:#0b0f14; border:1px solid #1e2a38; border-radius:8px; padding:12px; text-align:center;">
+        <div style="font-size:10px; color:#4a5a6a; letter-spacing:2px; margin-bottom:4px;">FALSE POS</div>
+        <div style="font-size:20px; color:#f85149; font-weight:700;">12,743</div>
+      </div>
+      <div style="background:#0b0f14; border:1px solid #1e2a38; border-radius:8px; padding:12px; text-align:center;">
+        <div style="font-size:10px; color:#4a5a6a; letter-spacing:2px; margin-bottom:4px;">FALSE NEG</div>
+        <div style="font-size:20px; color:#f85149; font-weight:700;">7,756</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <strong style="color:#8b949e">Note on detection methodology:</strong>
+  Labels used ONLY for validation. The detect() engine operates exclusively on traffic features (state, protocol, TTL, packet counts, load, jitter) — not on ground truth labels. This constitutes genuine unsupervised anomaly detection. All parallel implementations produce identical results, confirming correctness of parallelisation strategy.
+  <br><br>
+  <strong style="color:#8b949e">Hardware:</strong> 13th Gen Intel i7-13620H · 8 vCPUs · Ubuntu 24 VM · GCC -O2 · OpenMPI
+</div>
+
+<script>
+const labels = ['1', '2', '4', '8'];
+const ideal  = [1, 2, 4, 8];
+const ompSpd = [1.18, 2.17, 4.29, 5.21];
+const mpiSpd = [1.19, 2.33, 4.30, 5.99];
+const ompEff = [117.9, 108.4, 107.3, 65.2];
+const mpiEff = [119.0, 116.3, 107.4, 74.9];
+const ompTime= [0.3621, 0.1969, 0.0994, 0.0819];
+const mpiTime= [0.3587, 0.1834, 0.0993, 0.0713];
+const ompThr = [1933166, 3554596, 7042292, 8547020];
+const mpiThr = [1951625, 3816795, 7049346, 9818794];
+
+const gridColor = '#1e2a38';
+const textColor = '#5a6a7a';
+
+const baseOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: textColor, font: { family: 'Share Tech Mono', size: 11 }, boxWidth: 12 } },
+    tooltip: { backgroundColor: '#0b0f14', borderColor: '#1e2a38', borderWidth: 1, titleColor: '#e0e6f0', bodyColor: '#8b949e', titleFont: { family: 'Share Tech Mono' }, bodyFont: { family: 'Share Tech Mono' } }
+  },
+  scales: {
+    x: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Share Tech Mono', size: 11 } }, title: { display: true, color: textColor, font: { family: 'Share Tech Mono', size: 11 } } },
+    y: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Share Tech Mono', size: 11 } }, title: { display: true, color: textColor, font: { family: 'Share Tech Mono', size: 11 } } }
+  }
+};
+
+// Chart 1 — Speedup
+new Chart(document.getElementById('chartSpeedup'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'Ideal', data: ideal, borderColor: '#ffffff22', borderDash: [6,4], pointRadius: 0, tension: 0 },
+      { label: 'OpenMP', data: ompSpd, borderColor: '#00d4ff', backgroundColor: '#00d4ff33', pointBackgroundColor: '#00d4ff', pointRadius: 5, tension: 0.3, fill: false },
+      { label: 'MPI',    data: mpiSpd, borderColor: '#ff6b35', backgroundColor: '#ff6b3533', pointBackgroundColor: '#ff6b35', pointRadius: 5, tension: 0.3, fill: false },
+    ]
+  },
+  options: { ...baseOpts, scales: { ...baseOpts.scales, x: { ...baseOpts.scales.x, title: { ...baseOpts.scales.x.title, text: 'Threads / Processes' } }, y: { ...baseOpts.scales.y, title: { ...baseOpts.scales.y.title, text: 'Speedup (×)' } } } }
+});
+
+// Chart 2 — Efficiency
+new Chart(document.getElementById('chartEfficiency'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      { label: 'OpenMP', data: ompEff, borderColor: '#00d4ff', pointBackgroundColor: '#00d4ff', pointRadius: 5, tension: 0.3, fill: false },
+      { label: 'MPI',    data: mpiEff, borderColor: '#ff6b35', pointBackgroundColor: '#ff6b35', pointRadius: 5, tension: 0.3, fill: false },
+    ]
+  },
+  options: { ...baseOpts, scales: { ...baseOpts.scales, x: { ...baseOpts.scales.x, title: { ...baseOpts.scales.x.title, text: 'Threads / Processes' } }, y: { ...baseOpts.scales.y, min: 0, max: 130, title: { ...baseOpts.scales.y.title, text: 'Efficiency (%)' } } },
+    plugins: { ...baseOpts.plugins, annotation: { annotations: { line1: { type: 'line', yMin: 100, yMax: 100, borderColor: '#ffffff33', borderDash: [4,4] } } } }
+  }
+});
+
+// Chart 3 — Time (with serial reference line)
+new Chart(document.getElementById('chartTime'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: 'Serial (baseline)', data: [0.4267, 0.4267, 0.4267, 0.4267], type: 'line', borderColor: '#8b949e', borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, order: 0 },
+      { label: 'OpenMP', data: ompTime, backgroundColor: '#00d4ff88', borderColor: '#00d4ff', borderWidth: 1, borderRadius: 4, order: 1 },
+      { label: 'MPI',    data: mpiTime, backgroundColor: '#ff6b3588', borderColor: '#ff6b35', borderWidth: 1, borderRadius: 4, order: 1 },
+    ]
+  },
+  options: { ...baseOpts, scales: { ...baseOpts.scales, x: { ...baseOpts.scales.x, title: { ...baseOpts.scales.x.title, text: 'Threads / Processes' } }, y: { ...baseOpts.scales.y, title: { ...baseOpts.scales.y.title, text: 'Time (seconds)' } } } }
+});
+
+// Chart 4 — Throughput (with serial reference line)
+new Chart(document.getElementById('chartThroughput'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: 'Serial (baseline)', data: [1640315, 1640315, 1640315, 1640315], type: 'line', borderColor: '#8b949e', borderDash: [6,4], borderWidth: 2, pointRadius: 0, fill: false, order: 0 },
+      { label: 'OpenMP', data: ompThr, backgroundColor: '#00d4ff88', borderColor: '#00d4ff', borderWidth: 1, borderRadius: 4, order: 1 },
+      { label: 'MPI',    data: mpiThr, backgroundColor: '#ff6b3588', borderColor: '#ff6b35', borderWidth: 1, borderRadius: 4, order: 1 },
+    ]
+  },
+  options: { ...baseOpts, scales: { ...baseOpts.scales, x: { ...baseOpts.scales.x, title: { ...baseOpts.scales.x.title, text: 'Threads / Processes' } }, y: { ...baseOpts.scales.y, title: { ...baseOpts.scales.y.title, text: 'Records / second' } } } }
+});
+</script>
+</body>
+</html>
