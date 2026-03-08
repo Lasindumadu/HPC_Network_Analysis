@@ -413,6 +413,46 @@ int main(int argc, char *argv[]) {
 
         printf("\nSingle-pass time: %.4fs  (saved)\n", single_time);
         printf("Total time (x%d): %.4fs\n", REPEAT_FACTOR, max_elapsed);
+
+        /* save log for chart generation (rank 0 only) */
+        { int _r = system("mkdir -p results/logs"); (void)_r; }
+        char log_path[64];
+        snprintf(log_path, sizeof(log_path), "results/logs/mpi_%dp.log", nprocs);
+        FILE *lf = fopen(log_path, "w");
+        if (!lf) { snprintf(log_path, sizeof(log_path), "mpi_%dp.log", nprocs); lf = fopen(log_path, "w"); }
+        if (lf) {
+            fprintf(lf, "=== MPI Network Traffic Anomaly Detection ===\n");
+            fprintf(lf, "Processes: %d\n", nprocs);
+            fprintf(lf, "Records/pass: %ld\n", global_tot / REPEAT_FACTOR);
+            fprintf(lf, "Throughput: %.0f rec/s\n", global_tot / max_elapsed);
+            double g_acc  = 100.0*(global_TP+global_TN)/(double)(global_TP+global_TN+global_FP+global_FN);
+            double g_prec = (global_TP+global_FP)>0 ? 100.0*global_TP/(global_TP+global_FP) : 0.0;
+            double g_rec  = (global_TP+global_FN)>0 ? 100.0*global_TP/(global_TP+global_FN) : 0.0;
+            double g_f1   = (g_prec+g_rec)>0 ? 2.0*g_prec*g_rec/(g_prec+g_rec) : 0.0;
+            double g_rmse = sqrt(global_sse/(global_TP+global_TN+global_FP+global_FN));
+            fprintf(lf, "Accuracy:  %.3f%%\n",  g_acc);
+            fprintf(lf, "Precision: %.3f%%\n",  g_prec);
+            fprintf(lf, "Recall:    %.3f%%\n",  g_rec);
+            fprintf(lf, "F1 Score:  %.3f%%\n",  g_f1);
+            fprintf(lf, "RMSE:      %.6f \n",   g_rmse);
+            fprintf(lf, "Single-pass time: %.4fs\n", single_time);
+            fprintf(lf, "Total time (x%d): %.4fs\n", REPEAT_FACTOR, max_elapsed);
+            /* re-read serial time to save speedup/efficiency in log */
+            FILE *st = fopen("../../results/serial_time.txt", "r");
+            if (!st) st = fopen("serial_time.txt", "r");
+            if (st) {
+                double serial_time2;
+                if (fscanf(st, "%lf", &serial_time2) == 1) {
+                    double sp = serial_time2 / single_time;
+                    double ef = sp / nprocs * 100.0;
+                    fprintf(lf, "Speedup: %.2fx\n", sp);
+                    fprintf(lf, "Efficiency: %.1f%%\n", ef);
+                }
+                fclose(st);
+            }
+            fclose(lf);
+            printf("Log saved to %s\n", log_path);
+        }
     }
 
     MPI_Finalize();   /* shut down MPI environment — must be the last MPI call */

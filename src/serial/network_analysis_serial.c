@@ -321,5 +321,24 @@ int main(int argc, char *argv[]) {
            single_time);
     printf("Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
 
+    /* save log for chart generation */
+    { int _r = system("mkdir -p results/logs"); (void)_r; }
+    FILE *lf = fopen("results/logs/serial.log", "w");
+    if (!lf) lf = fopen("serial.log", "w");
+    if (lf) {
+        fprintf(lf, "=== Serial Network Traffic Anomaly Detection ===\n");
+        fprintf(lf, "Records/pass: %ld\n", (long)nrec);
+        fprintf(lf, "Throughput: %.0f rec/s\n", (double)nrec / single_time);
+        fprintf(lf, "Accuracy:  %.3f%%\n",  accuracy);
+        fprintf(lf, "Precision: %.3f%%\n",  precision);
+        fprintf(lf, "Recall:    %.3f%%\n",  recall);
+        fprintf(lf, "F1 Score:  %.3f%%\n",  f1);
+        fprintf(lf, "RMSE:      %.6f \n",   rmse);
+        fprintf(lf, "Single-pass time: %.4fs\n", single_time);
+        fprintf(lf, "Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
+        fclose(lf);
+        printf("Log saved to results/logs/serial.log\n");
+    }
+
     return 0;
 }
