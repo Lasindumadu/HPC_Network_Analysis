@@ -1,4 +1,26 @@
-data/
-results/
-*.o
-*.csv
+# Compiled binaries
+bin/*
+!bin/.gitkeep
+
+# Binary data files (too large for GitHub)
+data/*.bin
+data/*.npy
+
+# Dataset CSVs (too large)
+dataset/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Results (optional - remove these lines if you want to include plots)
+# results/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Miniconda
+miniconda3/
