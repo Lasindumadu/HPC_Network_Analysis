@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
     const char *file = argc > 1 ? argv[1] :
         "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
 
-    int nthreads = omp_get_max_threads();
+    int nthreads = omp_get_max_threads();   /* read OMP_NUM_THREADS env variable — controls how many threads the parallel region will use */
 
     printf("=== OpenMP Network Traffic Anomaly Detection ===\n");
     printf("Threads: %d | Repeat factor: %d\n", nthreads, REPEAT_FACTOR);
@@ -234,6 +234,10 @@ int main(int argc, char *argv[]) {
         double local_sse = 0.0;
         long   local_tot = 0;
 
+        /* parallel for: spawn threads and divide loop iterations evenly across them     */
+        /* schedule(static): each thread gets a fixed equal-sized chunk of iterations   */
+        /* reduction: each thread has its own private copy; OpenMP sums them after loop */
+        /* default(shared): all other variables are shared — read-only globals are safe */
         #pragma omp parallel for                    \
             schedule(static)                        \
             reduction(+: local_TP, local_TN,        \
