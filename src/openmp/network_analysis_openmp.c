@@ -342,5 +342,40 @@ int main(int argc, char *argv[]) {
     printf("\nSingle-pass time: %.4fs  (saved)\n", single_time);
     printf("Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
 
+    /* save log for chart generation */
+    { int _r = system("mkdir -p results/logs"); (void)_r; }
+    char log_path[64];
+    snprintf(log_path, sizeof(log_path), "results/logs/openmp_%dt.log", nthreads);
+    FILE *lf = fopen(log_path, "w");
+    if (!lf) { snprintf(log_path, sizeof(log_path), "openmp_%dt.log", nthreads); lf = fopen(log_path, "w"); }
+    if (lf) {
+        fprintf(lf, "=== OpenMP Network Traffic Anomaly Detection ===\n");
+        fprintf(lf, "Threads: %d\n", nthreads);
+        fprintf(lf, "Records/pass: %d\n", total_lines);
+        fprintf(lf, "Throughput: %.0f rec/s\n", (double)total_lines / single_time);
+        fprintf(lf, "Accuracy:  %.3f%%\n",  accuracy);
+        fprintf(lf, "Precision: %.3f%%\n",  precision);
+        fprintf(lf, "Recall:    %.3f%%\n",  recall);
+        fprintf(lf, "F1 Score:  %.3f%%\n",  f1);
+        fprintf(lf, "RMSE:      %.6f \n",   rmse);
+        fprintf(lf, "Single-pass time: %.4fs\n", single_time);
+        fprintf(lf, "Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
+        /* re-read serial time to save speedup/efficiency in log */
+        FILE *st = fopen("../../results/serial_time.txt", "r");
+        if (!st) st = fopen("serial_time.txt", "r");
+        if (st) {
+            double serial_time2;
+            if (fscanf(st, "%lf", &serial_time2) == 1) {
+                double sp = serial_time2 / single_time;
+                double ef = sp / nthreads * 100.0;
+                fprintf(lf, "Speedup: %.2fx\n", sp);
+                fprintf(lf, "Efficiency: %.1f%%\n", ef);
+            }
+            fclose(st);
+        }
+        fclose(lf);
+        printf("Log saved to %s\n", log_path);
+    }
+
     return 0;
 }
