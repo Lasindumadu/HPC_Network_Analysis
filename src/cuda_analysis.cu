@@ -142,7 +142,7 @@ static void print_metrics(const int *pred, const int *truth, int n) {
 int main(int argc, char *argv[]) {
     const char *data_path = (argc > 1) ? argv[1] : "../data/train_data.bin";
 
-    /* GPU info */
+    /* GPU info but now we don't use cudabecause of some errors */
     int dev = 0;
     struct cudaDeviceProp prop;
     CUDA_CHECK(cudaGetDeviceProperties(&prop, dev));

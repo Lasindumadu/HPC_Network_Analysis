@@ -64,7 +64,7 @@ assert X.shape[0] == y.shape[0]
 # Scale
 X = StandardScaler().fit_transform(X).astype(np.float32)
 
-# Split
+# Split data test-20% train -80%
 X_tr, X_te, y_tr, y_te = train_test_split(
     X, y, test_size=0.2, stratify=y, random_state=42)
 print(f"Train: {X_tr.shape}  Test: {X_te.shape}")
