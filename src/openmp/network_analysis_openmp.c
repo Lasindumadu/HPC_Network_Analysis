@@ -29,6 +29,7 @@
  * ════════════════════════════════════════════════════════════════
  */
 
+#define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
@@ -37,6 +38,8 @@
 #include <math.h>
 #include <time.h>
 #include <omp.h>
+#include <ctype.h>
+
 
 #define MAX_LINE         512
 #define MAX_FIELDS       50
@@ -89,13 +92,19 @@ static int parse(const char *ln, Row *r) {
     return r->n;
 }
 
-static inline float       ff(Row *r, int c) { return (c>=0&&c<r->n&&r->buf[c][0]) ? atof(r->buf[c]) : 0.0f; }
-static inline int         fi(Row *r, int c) { return (c>=0&&c<r->n&&r->buf[c][0]) ? atoi(r->buf[c]) : 0;    }
+static inline float ff(Row *r, int c) {
+    return (c>=0&&c<r->n&&r->buf[c][0]) ? strtof(r->buf[c], NULL) : 0.0f;
+}
+
+static inline int fi(Row *r, int c) {
+    return (c>=0&&c<r->n&&r->buf[c][0]) ? (int)strtol(r->buf[c], NULL, 10) : 0;
+}
 static inline const char *fs(Row *r, int c) { return (c>=0&&c<r->n)               ? r->buf[c]       : "";   }
 
 /* ── Column detection ────────────────────────── */
 static void detect_columns(const char *hdr) {
-    Row r; char *h = strdup(hdr);
+    Row r; char *h = malloc(strlen(hdr) + 1);
+    strcpy(h, hdr);
     h[strcspn(h, "\n")] = '\0';
     parse(h, &r);
 
@@ -204,10 +213,16 @@ int main(int argc, char *argv[]) {
     detect_columns(ln);
 
     /* ── Step 2: Load all records into memory ─── */
-    char (*all_lines)[MAX_LINE] = malloc(sizeof(*all_lines) * MAX_RECORDS);
-    if (!all_lines) { fprintf(stderr, "Out of memory\n"); return 1; }
-
     int total_lines = 0;
+
+    /* temporary allocation with max size */
+    char (*all_lines)[MAX_LINE] =
+        malloc(sizeof(*all_lines) * MAX_RECORDS);
+
+    if (!all_lines) {
+        fprintf(stderr, "Out of memory\n");
+        return 1;
+    }
     while (fgets(ln, MAX_LINE, fp) && total_lines < MAX_RECORDS) {
         ln[strcspn(ln, "\n")] = '\0';
         if (!ln[0]) continue;
@@ -245,14 +260,13 @@ int main(int argc, char *argv[]) {
                          local_sse, local_tot)      \
             default(shared)
         for (int i = 0; i < total_lines; i++) {
-            char tmp[MAX_LINE];
-            snprintf(tmp, MAX_LINE, "%s", all_lines[i]);
-
             Row r;
-            if (parse(tmp, &r) < MIN_F) { free_row(&r); continue; }
+            parse(all_lines[i], &r);
 
             int pred = (detect(&r) >= ATTACK_THRESHOLD) ? 1 : 0;
             int act  = fi(&r, C_LABEL);   /* ground truth — validation only */
+
+            //free_row(&r);
 
             local_sse += (double)(pred - act) * (pred - act);
             local_tot++;
@@ -265,7 +279,7 @@ int main(int argc, char *argv[]) {
                 else                        local_FN++;
             }
 
-            free_row(&r);
+            //free_row(&r);
         }
         /* end parallel for */
 

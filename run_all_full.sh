@@ -1,22 +1,23 @@
 #!/bin/bash
-# HPC Network Analysis - Run All Variants (Non-CUDA, Full Dataset)
+# HPC Network Analysis - Run All Variants (Full Dataset, All Implementations)
 # Supports: Serial, OpenMP(1,2,4,8,16), Pthreads(1,2,4,8,16), MPI(1,2,4,8,16), Hybrid
-# Execute: chmod +x run_all.sh && ./run_all.sh
+# Execute: chmod +x run_all_full.sh && ./run_all_full.sh
 
 set -euo pipefail
 
 DATA="data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv"
+
 mkdir -p results/logs
 
 echo "=========================================="
-echo "Building binaries..."
+echo "Building all binaries..."
 echo "=========================================="
 make clean
 make all
 
 echo ""
 echo "=========================================="
-echo "Running Serial..."
+echo "Running Serial Baseline..."
 echo "=========================================="
 ./results/serial "$DATA" | tee results/logs/serial.log
 

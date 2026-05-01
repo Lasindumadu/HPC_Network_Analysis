@@ -1,56 +1,53 @@
 #!/bin/bash
-# HPC Network Analysis - Run All Variants (Non-CUDA, Full Dataset)
+# HPC Network Analysis - Run All Non-CUDA Variants (Full Dataset)
 # Supports: Serial, OpenMP(1,2,4,8,16), Pthreads(1,2,4,8,16), MPI(1,2,4,8,16), Hybrid
-# Execute: chmod +x run_all.sh && ./run_all.sh
+# Execute: chmod +x run_all_non_cuda_full.sh && ./run_all_non_cuda_full.sh
 
 set -euo pipefail
 
 DATA="data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv"
+
 mkdir -p results/logs
 
-echo "=========================================="
+echo "======================================"
 echo "Building binaries..."
-echo "=========================================="
+echo "======================================"
+
 make clean
 make all
 
-echo ""
-echo "=========================================="
+echo "======================================"
 echo "Running Serial..."
-echo "=========================================="
+echo "======================================"
 ./results/serial "$DATA" | tee results/logs/serial.log
 
-echo ""
-echo "=========================================="
+echo "======================================"
 echo "Running OpenMP (1, 2, 4, 8, 16 threads)..."
-echo "=========================================="
+echo "======================================"
 for t in 1 2 4 8 16; do
   echo "--- OpenMP with $t threads ---"
   OMP_NUM_THREADS=$t ./results/openmp "$DATA" | tee results/logs/openmp_${t}t.log
 done
 
-echo ""
-echo "=========================================="
+echo "======================================"
 echo "Running Pthreads (1, 2, 4, 8, 16 threads)..."
-echo "=========================================="
+echo "======================================"
 for t in 1 2 4 8 16; do
   echo "--- Pthreads with $t threads ---"
   ./results/pthreads "$DATA" $t | tee results/logs/pthreads_${t}t.log
 done
 
-echo ""
-echo "=========================================="
+echo "======================================"
 echo "Running MPI (1, 2, 4, 8, 16 processes)..."
-echo "=========================================="
+echo "======================================"
 for p in 1 2 4 8 16; do
   echo "--- MPI with $p processes ---"
   mpirun --allow-run-as-root --oversubscribe -np $p ./results/mpi "$DATA" | tee results/logs/mpi_${p}p.log
 done
 
-echo ""
-echo "=========================================="
+echo "======================================"
 echo "Running Hybrid MPI + OpenMP..."
-echo "=========================================="
+echo "======================================"
 # Hybrid configurations (np x nt) where np*nt <= 16
 hybrid_configs="2x2 2x4 2x8 4x2 4x4 8x2 1x16 2x16 4x8 8x4 16x1"
 for cfg in $hybrid_configs; do
@@ -60,9 +57,9 @@ for cfg in $hybrid_configs; do
   OMP_NUM_THREADS=$nt mpirun --allow-run-as-root --oversubscribe -np $np ./results/hybrid "$DATA" | tee results/logs/hybrid_${cfg}.log
 done
 
-echo ""
-echo "=========================================="
-echo "ALL VARIANTS COMPLETED SUCCESSFULLY!"
-echo "=========================================="
+echo "======================================"
+echo "ALL NON-CUDA VARIANTS COMPLETED SUCCESSFULLY!"
+echo "======================================"
+
 echo "Logs available at: results/logs/"
 echo "To generate charts: python3 generate_charts.py"
