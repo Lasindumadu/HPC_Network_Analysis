@@ -15,7 +15,7 @@
 #include <time.h>
 #include <math.h>
 
-#define MAX_LINE         512
+#define MAX_LINE         4096
 #define MAX_FIELDS       50
 #define HASH_SIZE        1024
 #define ATTACK_THRESHOLD 4
@@ -66,8 +66,17 @@ static int parse(const char *ln, Row *r) {
     return r->n;
 }
 
-static inline float       ff(Row *r, int c) { return (c>=0&&c<r->n&&r->buf[c][0]) ? atof(r->buf[c]) : 0.0f; }
-static inline int         fi(Row *r, int c) { return (c>=0&&c<r->n&&r->buf[c][0]) ? atoi(r->buf[c]) : 0;    }
+static inline float ff(Row *r, int c) {
+    return (c>=0&&c<r->n&&r->buf[c][0])
+        ? strtof(r->buf[c], NULL)
+        : 0.0f;
+}
+
+static inline int fi(Row *r, int c) {
+    return (c>=0&&c<r->n&&r->buf[c][0])
+        ? (int)strtol(r->buf[c], NULL, 10)
+        : 0;
+}
 static inline const char *fs(Row *r, int c) { return (c>=0&&c<r->n)               ? r->buf[c]       : "";   }
 
 /* ── Column detection ────────────────────────── */
@@ -184,19 +193,41 @@ typedef struct { char name[32]; long att, norm; } ProtoStat;
 static ProtoStat ptable[HASH_SIZE];
 
 static ProtoStat *proto_slot(const char *p) {
-    unsigned h = 5381;                                              /* DJB2 hash seed — chosen for low collision rate on short strings */
-    for (const char *c = p; *c; c++) h = h*33 + (unsigned char)*c; /* DJB2 hash: multiply-add loop over each character of the protocol name */
-    h %= HASH_SIZE;                                                 /* map hash to table index within [0, HASH_SIZE-1] */
-    if (!ptable[h].name[0]) strncpy(ptable[h].name, p, 31);        /* first visit to this slot: store protocol name, capped at 31 chars */
+    unsigned h = 5381;
+
+    for (const char *c = p; *c; c++)
+        h = h*33 + (unsigned char)*c;
+
+    h %= HASH_SIZE;
+
+    unsigned start = h;
+
+    while (ptable[h].name[0] &&
+           strcmp(ptable[h].name, p) != 0) {
+
+        h = (h + 1) % HASH_SIZE;
+
+        if (h == start) {
+            fprintf(stderr, "ERROR: Hash table full\n");
+            exit(1);
+        }
+    }
+
+    if (!ptable[h].name[0]) {
+        strncpy(ptable[h].name, p, 31);
+        ptable[h].name[31] = '\0';
+    }
+
     return &ptable[h];
 }
 
 /* ═══════════════════════════════════════════════ */
 int main(int argc, char *argv[]) {
     const char *file = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
+        "data/UNSW_NB15_1.csv/UNSW-NB15_1_with_header.csv";
 
     printf("=== Serial Network Traffic Anomaly Detection ===\n");
+    memset(ptable, 0, sizeof(ptable));
     printf("File: %s\n", file);
     printf("Repeat factor: %d  (total records: ~%d)\n\n",
            REPEAT_FACTOR, 82332 * REPEAT_FACTOR);
@@ -230,12 +261,14 @@ int main(int argc, char *argv[]) {
             fclose(fp); break;
         }
 
+        Row r;
+
         while (fgets(ln, MAX_LINE, fp)) {
             ln[strcspn(ln, "\n")] = '\0';       /* strip trailing newline before parsing — prevents it being included in field values */
             if (!ln[0]) continue;
 
-            Row r;
-            if (parse(ln, &r) < MIN_F) { free_row(&r); continue; }
+            
+            if (parse(ln, &r) <= 0 || r.n < MIN_F) { free_row(&r); continue; }
 
             int pred = (detect(&r) >= ATTACK_THRESHOLD) ? 1 : 0;
             int act  = fi(&r, C_LABEL);   /* ground truth — RMSE only */
@@ -263,10 +296,20 @@ int main(int argc, char *argv[]) {
     double single_time = elapsed / REPEAT_FACTOR;
     long   single_pass = tot / REPEAT_FACTOR;
 
-    double rmse      = sqrt(sse / tot);           /* root mean squared error: sqrt(sum((pred-actual)²) / total) */
-    double accuracy  = 100.0 * (TP + TN) / single_pass;
-    double precision = (TP+FP) > 0 ? 100.0*TP/(TP+FP) : 0.0;
-    double recall    = (TP+FN) > 0 ? 100.0*TP/(TP+FN) : 0.0;
+    double rmse = tot > 0 ? sqrt(sse / tot) : 0.0;
+    double accuracy =
+    single_pass > 0 ?
+    100.0 * (double)(TP + TN) / (double)single_pass
+    : 0.0;
+    double precision =
+    (TP+FP) > 0 ?
+    100.0 * (double)TP / (double)(TP+FP)
+    : 0.0;
+
+double recall =
+    (TP+FN) > 0 ?
+    100.0 * (double)TP / (double)(TP+FN)
+    : 0.0;
     double f1        = (precision+recall) > 0
                        ? 2.0*precision*recall/(precision+recall) : 0.0;
 
@@ -276,14 +319,17 @@ int main(int argc, char *argv[]) {
            single_pass, REPEAT_FACTOR, tot);
     printf("Attacks: %ld | Normal: %ld  (first pass)\n", TP+FP, TN+FN);
     printf("Time (total x%d): %.4fs | Throughput: %.0f rec/s\n\n",
-           REPEAT_FACTOR, elapsed, tot/elapsed);
+       REPEAT_FACTOR,
+       elapsed,
+       elapsed > 0 ? (double)tot / elapsed : 0);
 
     printf("=== Protocol Stats (first pass, >= 50 records) ===\n");
     printf("%-15s %8s %8s\n", "Proto", "Att", "Norm");
     printf("%-15s %8s %8s\n", "-----", "---", "----");
     for (int i = 0; i < HASH_SIZE; i++) {
         long total = ptable[i].att + ptable[i].norm;
-        if (ptable[i].name[0] && total >= (long)50*REPEAT_FACTOR)
+        if (ptable[i].name[0] &&
+            total / REPEAT_FACTOR >= 50)
             printf("%-15s %8ld %8ld\n",
                    ptable[i].name,
                    ptable[i].att  / REPEAT_FACTOR,
@@ -311,34 +357,38 @@ int main(int argc, char *argv[]) {
     else                       printf("Status: POOR\n");
 
     /* save single-pass time for speedup comparison */
-    FILE *tf = fopen("../../results/serial_time.txt", "w");  /* try project-relative path first */
-    if (!tf) tf = fopen("serial_time.txt", "w");             /* fallback to current directory if run from different location */
-    if (tf) {
-        fprintf(tf, "%.6f\n", single_time);                  /* write single-pass time so OpenMP/MPI can read it for speedup calculation */
-        fclose(tf);
-    }
-    printf("\nSingle-pass time: %.4fs  (saved for speedup comparison)\n",
-           single_time);
-    printf("Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
+/* save single-pass time for speedup comparison */
+int _r = system("mkdir -p results/logs");
+(void)_r;
 
-    /* save log for chart generation */
-    { int _r = system("mkdir -p results/logs"); (void)_r; }
-    FILE *lf = fopen("results/logs/serial.log", "w");
-    if (!lf) lf = fopen("serial.log", "w");
-    if (lf) {
-        fprintf(lf, "=== Serial Network Traffic Anomaly Detection ===\n");
-        fprintf(lf, "Records/pass: %ld\n", (long)nrec);
-        fprintf(lf, "Throughput: %.0f rec/s\n", (double)nrec / single_time);
-        fprintf(lf, "Accuracy:  %.3f%%\n",  accuracy);
-        fprintf(lf, "Precision: %.3f%%\n",  precision);
-        fprintf(lf, "Recall:    %.3f%%\n",  recall);
-        fprintf(lf, "F1 Score:  %.3f%%\n",  f1);
-        fprintf(lf, "RMSE:      %.6f \n",   rmse);
-        fprintf(lf, "Single-pass time: %.4fs\n", single_time);
-        fprintf(lf, "Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
-        fclose(lf);
-        printf("Log saved to results/logs/serial.log\n");
-    }
+FILE *tf = fopen("results/serial_time.txt", "w");
+if (tf) {
+    fprintf(tf, "%.6f\n", single_time);
+    fclose(tf);
+} else {
+    perror("Failed to write serial_time.txt");
+}
 
-    return 0;
+printf("\nSingle-pass time: %.4fs  (saved for speedup comparison)\n", single_time);
+printf("Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
+
+/* save log for chart generation */
+FILE *lf = fopen("results/logs/serial.log", "w");
+if (lf) {
+    fprintf(lf, "=== Serial Network Traffic Anomaly Detection ===\n");
+    fprintf(lf, "Records/pass: %ld\n", (long)nrec);
+    fprintf(lf, "Throughput: %.0f rec/s\n",
+        single_time > 0 ? (double)nrec / single_time : 0);
+    fprintf(lf, "Accuracy:  %.3f%%\n", accuracy);
+    fprintf(lf, "Precision: %.3f%%\n", precision);
+    fprintf(lf, "Recall:    %.3f%%\n", recall);
+    fprintf(lf, "F1 Score:  %.3f%%\n", f1);
+    fprintf(lf, "RMSE:      %.6f\n", rmse);
+    fprintf(lf, "Single-pass time: %.4fs\n", single_time);
+    fprintf(lf, "Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
+    fclose(lf);
+
+    printf("Log saved to results/logs/serial.log\n");
+}
+return 0;
 }
