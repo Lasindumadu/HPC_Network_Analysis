@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HPC Network Traffic Analysis — Interactive Benchmark</title>
+    <title>HPC Network Traffic Analysis — Benchmark Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -11,20 +11,28 @@
 
 <!-- Header -->
 <header class="header">
-    <div class="tag">EC7207 · High Performance Computing</div>
-    <h1>Network Traffic Analysis — Interactive Benchmark</h1>
-    <div class="sub">EG/2021/4426 · EG/2021/4432 · EG/2021/4433 &nbsp;|&nbsp; UNSW-NB15 Dataset</div>
+    <div class="header-top">
+        <div class="header-left">
+            <div class="tag">EC7207 · High Performance Computing</div>
+            <h1>Network Traffic <span>Analysis</span></h1>
+            <div class="sub">EG/2021/4426 · EG/2021/4432 · EG/2021/4433 &nbsp;·&nbsp; UNSW-NB15 Dataset</div>
+        </div>
+        <div class="header-right">
+            <span class="header-dataset-label">Dataset</span>
+            <span class="header-dataset-val">UNSW-NB15 · 700,001 records</span>
+        </div>
+    </div>
 </header>
 
-<!-- System Status Bar -->
+<!-- System Status -->
 <div class="status-bar" id="statusBar">
     <span id="statusIndicator" class="status-indicator status-unknown">●</span>
-    <span id="statusText">Checking system status...</span>
+    <span id="statusText">Checking system status…</span>
     <div class="status-chips" id="statusChips"></div>
     <span class="status-detail" id="statusDetail"></span>
 </div>
 
-<!-- Control Panel -->
+<!-- Controls -->
 <div class="card control-panel">
     <div class="card-title">Benchmark Controls</div>
 
@@ -32,7 +40,7 @@
         <div class="control-group">
             <label for="implementation">Implementation</label>
             <select id="implementation" onchange="updateWorkerControls()">
-                <option value="serial">Serial (Baseline)</option>
+                <option value="serial">Serial — Baseline</option>
                 <option value="openmp">OpenMP</option>
                 <option value="pthreads">POSIX Threads</option>
                 <option value="mpi">MPI</option>
@@ -67,7 +75,7 @@
                 </div>
                 <span class="hybrid-x">×</span>
                 <div>
-                    <span class="hybrid-label">OpenMP Threads</span>
+                    <span class="hybrid-label">OMP Threads</span>
                     <select id="ompThreads">
                         <option value="1">1</option>
                         <option value="2" selected>2</option>
@@ -99,75 +107,74 @@
         </div>
     </div>
 
-    <!-- CUDA notice (shown only when CUDA selected) -->
+    <!-- CUDA notice -->
     <div class="cuda-notice hidden" id="cudaNotice">
         <span class="cuda-notice-icon">⚡</span>
         <div>
-            <strong>CUDA Implementation</strong> — Code exists at
+            <strong>CUDA Implementation</strong> — Source at
             <code>src/cuda/network_analysis_cuda.cu</code>. Compile with
             <code>nvcc -O2 -std=c++11 -o results/cuda src/cuda/network_analysis_cuda.cu</code>.
-            On this VMware system (no GPU), the web UI will run a <em>simulation</em>
-            using the verified confusion-matrix values.
+            No GPU detected on this machine — the dashboard will run a <em>simulation</em>
+            using verified confusion-matrix values.
         </div>
     </div>
 
     <div class="button-row">
-        <button class="btn btn-primary" onclick="buildAll()" id="btnBuild">
-            <span class="btn-icon">🔧</span> Build All
+        <button class="btn btn-primary" onclick="runAllBenchmarks()" id="btnRunAll">
+            <span class="btn-icon">⚡</span> Run All Benchmarks
         </button>
         <button class="btn btn-success" onclick="runBenchmark()" id="btnRun">
-            <span class="btn-icon">▶</span> Run
+            <span class="btn-icon">▶</span> Run Selected
         </button>
-        <button class="btn btn-warning" onclick="runAllBenchmarks()" id="btnRunAll">
-            <span class="btn-icon">⚡</span> Run All
+        <button class="btn btn-warning" onclick="buildAll()" id="btnBuild">
+            <span class="btn-icon">🔧</span> Build All
         </button>
         <button class="btn btn-danger" onclick="stopBenchmark()" id="btnStop" disabled>
             <span class="btn-icon">⏹</span> Stop
         </button>
         <button class="btn btn-secondary" onclick="exportResults()" id="btnExport">
-            <span class="btn-icon">📥</span> Export CSV
+            <span class="btn-icon">↓</span> Export CSV
         </button>
         <button class="btn btn-secondary" onclick="clearResults()" id="btnClear">
-            <span class="btn-icon">🗑</span> Clear History
+            <span class="btn-icon">✕</span> Clear History
         </button>
     </div>
 </div>
 
-<!-- Progress Bar (visible while running) -->
+<!-- Progress Bar -->
 <div class="progress-wrap hidden" id="progressWrap">
     <div class="progress-bar" id="progressBar"></div>
-    <span class="progress-label" id="progressLabel">Running...</span>
+    <span class="progress-label" id="progressLabel">Running…</span>
 </div>
 
-<!-- Live Output Console -->
+<!-- Live Console -->
 <div class="card console-card">
     <div class="card-title-row">
         <div class="card-title">Live Output</div>
         <button class="btn-icon-only" onclick="clearConsole()" title="Clear console">✕</button>
     </div>
     <div class="console" id="console">
-        <div class="console-line console-info">Ready to run benchmarks. Select an implementation and click Run.</div>
+        <div class="console-line console-info">Ready — select an implementation and click Run, or use Run All to benchmark everything.</div>
     </div>
 </div>
 
-<!-- Current Results Dashboard -->
+<!-- Current Results -->
 <div class="card results-card hidden" id="resultsCard">
     <div class="card-title-row">
         <div class="card-title">Latest Results</div>
-        <span class="sim-badge hidden" id="simBadge">SIMULATED</span>
+        <span class="sim-badge hidden" id="simBadge">Simulated</span>
     </div>
 
-    <!-- Metric Cards -->
     <div class="metrics-grid" id="metricsGrid">
         <div class="metric-card metric-time" id="metricTime">
             <div class="metric-label">Execution Time</div>
             <div class="metric-value">—</div>
-            <div class="metric-unit">seconds</div>
+            <div class="metric-unit">seconds / pass</div>
         </div>
         <div class="metric-card metric-throughput" id="metricThroughput">
             <div class="metric-label">Throughput</div>
             <div class="metric-value">—</div>
-            <div class="metric-unit">rec/s</div>
+            <div class="metric-unit">records / sec</div>
         </div>
         <div class="metric-card metric-speedup" id="metricSpeedup">
             <div class="metric-label">Speedup</div>
@@ -177,21 +184,20 @@
         <div class="metric-card metric-efficiency" id="metricEfficiency">
             <div class="metric-label">Efficiency</div>
             <div class="metric-value">—</div>
-            <div class="metric-unit">%</div>
+            <div class="metric-unit">parallel efficiency</div>
         </div>
         <div class="metric-card metric-accuracy" id="metricAccuracy">
             <div class="metric-label">Accuracy</div>
             <div class="metric-value">—</div>
-            <div class="metric-unit">%</div>
+            <div class="metric-unit">detection rate</div>
         </div>
         <div class="metric-card metric-f1" id="metricF1">
             <div class="metric-label">F1 Score</div>
             <div class="metric-value">—</div>
-            <div class="metric-unit">%</div>
+            <div class="metric-unit">harmonic mean</div>
         </div>
     </div>
 
-    <!-- Confusion Matrix & Accuracy Details -->
     <div class="details-grid">
         <div class="details-section">
             <div class="details-title">Confusion Matrix</div>
@@ -215,7 +221,7 @@
         </div>
 
         <div class="details-section">
-            <div class="details-title">Accuracy Metrics</div>
+            <div class="details-title">Classification Metrics</div>
             <div class="accuracy-metrics" id="accuracyMetrics">
                 <div class="acc-row">
                     <span class="acc-label">Precision</span>
@@ -251,7 +257,7 @@
     </div>
 </div>
 
-<!-- Charts Section -->
+<!-- Performance Charts -->
 <div class="card charts-card" id="chartsCard">
     <div class="card-title">Performance Charts</div>
     <div class="charts-grid">
@@ -268,13 +274,13 @@
             <canvas id="chartTime"></canvas>
         </div>
         <div class="chart-container">
-            <div class="chart-title">Throughput (records/sec)</div>
+            <div class="chart-title">Throughput (records / sec)</div>
             <canvas id="chartThroughput"></canvas>
         </div>
     </div>
 </div>
 
-<!-- Results History Table -->
+<!-- Results History -->
 <div class="card history-card" id="historyCard">
     <div class="card-title">Results History</div>
     <div class="table-wrap">
@@ -294,7 +300,7 @@
                 </tr>
             </thead>
             <tbody id="historyBody">
-                <tr><td colspan="10" class="table-empty">No results yet. Run a benchmark to see results here.</td></tr>
+                <tr><td colspan="10" class="table-empty">No results yet — run a benchmark to populate this table.</td></tr>
             </tbody>
         </table>
     </div>
@@ -302,11 +308,8 @@
 
 <!-- Footer -->
 <footer class="footer">
-    <strong>HPC Network Traffic Analysis</strong> — Parallel computing for real-time anomaly detection.
-    <br>
-    Serial · OpenMP · Pthreads · MPI · Hybrid · CUDA &nbsp;|&nbsp;
-    Flask + Chart.js &nbsp;|&nbsp; UNSW-NB15 Dataset &nbsp;|&nbsp;
-    Labels used only for validation — detection runs on traffic features only.
+    <strong>HPC Network Traffic Analysis</strong> — Parallel anomaly detection on UNSW-NB15 &nbsp;·&nbsp;
+    Serial · OpenMP · Pthreads · MPI · Hybrid · CUDA &nbsp;·&nbsp; Flask + Chart.js
 </footer>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
