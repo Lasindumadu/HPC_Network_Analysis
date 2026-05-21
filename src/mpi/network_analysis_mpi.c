@@ -429,7 +429,8 @@ int main(int argc, char *argv[]) {
             double g_prec = (global_TP+global_FP)>0 ? 100.0*global_TP/(global_TP+global_FP) : 0.0;
             double g_rec  = (global_TP+global_FN)>0 ? 100.0*global_TP/(global_TP+global_FN) : 0.0;
             double g_f1   = (g_prec+g_rec)>0 ? 2.0*g_prec*g_rec/(g_prec+g_rec) : 0.0;
-            double g_rmse = sqrt(global_sse/(global_TP+global_TN+global_FP+global_FN));
+            /* global_tot already spans all REPEAT_FACTOR passes — correct denominator for RMSE */
+            double g_rmse = sqrt(global_sse / global_tot);
             fprintf(lf, "Accuracy:  %.3f%%\n",  g_acc);
             fprintf(lf, "Precision: %.3f%%\n",  g_prec);
             fprintf(lf, "Recall:    %.3f%%\n",  g_rec);
