@@ -3,28 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HPC Network Traffic Analysis — Benchmark Dashboard</title>
+    <title>HPC Network Analysis — Benchmark Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+<div class="page-wrap">
 
-<!-- Header -->
+<!-- ── Header ────────────────────────────────────────────── -->
 <header class="header">
-    <div class="header-top">
+    <div class="header-inner">
         <div class="header-left">
-            <div class="tag">EC7207 · High Performance Computing</div>
-            <h1>Network Traffic <span>Analysis</span></h1>
-            <div class="sub">EG/2021/4426 · EG/2021/4432 · EG/2021/4433 &nbsp;·&nbsp; UNSW-NB15 Dataset</div>
+            <div class="header-badge">EC7207 &nbsp;·&nbsp; High Performance Computing</div>
+            <h1>Network Traffic <em>Analysis</em></h1>
+            <div class="header-sub">
+                <span class="header-sub-text">EG/2021/4426 · EG/2021/4432 · EG/2021/4433</span>
+                <span class="header-sub-text" style="color:#1e2d42">|</span>
+                <span class="header-sub-text">UNSW-NB15 Dataset · 700,001 records</span>
+            </div>
         </div>
         <div class="header-right">
-            <span class="header-dataset-label">Dataset</span>
-            <span class="header-dataset-val">UNSW-NB15 · 700,001 records</span>
+            <div class="impl-legend">
+                <span class="impl-dot serial">Serial</span>
+                <span class="impl-dot openmp">OpenMP</span>
+                <span class="impl-dot pthreads">Pthreads</span>
+                <span class="impl-dot mpi">MPI</span>
+                <span class="impl-dot hybrid">Hybrid</span>
+                <span class="impl-dot cuda">CUDA</span>
+            </div>
         </div>
     </div>
 </header>
 
-<!-- System Status -->
+<div class="section-divider"></div>
+
+<!-- ── System Status ─────────────────────────────────────── -->
 <div class="status-bar" id="statusBar">
     <span id="statusIndicator" class="status-indicator status-unknown">●</span>
     <span id="statusText">Checking system status…</span>
@@ -32,234 +45,246 @@
     <span class="status-detail" id="statusDetail"></span>
 </div>
 
-<!-- Controls -->
+<!-- ── Benchmark Controls ────────────────────────────────── -->
 <div class="card control-panel">
-    <div class="card-title">Benchmark Controls</div>
-
-    <div class="control-grid">
-        <div class="control-group">
-            <label for="implementation">Implementation</label>
-            <select id="implementation" onchange="updateWorkerControls()">
-                <option value="serial">Serial — Baseline</option>
-                <option value="openmp">OpenMP</option>
-                <option value="pthreads">POSIX Threads</option>
-                <option value="mpi">MPI</option>
-                <option value="hybrid">Hybrid MPI + OpenMP</option>
-                <option value="cuda">CUDA (GPU / Simulated)</option>
-            </select>
-        </div>
-
-        <div class="control-group" id="workerGroup">
-            <label for="workers">Workers (Threads / Processes)</label>
-            <select id="workers">
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="4" selected>4</option>
-                <option value="8">8</option>
-                <option value="16">16</option>
-            </select>
-        </div>
-
-        <div class="control-group hidden" id="hybridGroup">
-            <label>Hybrid Configuration</label>
-            <div class="hybrid-controls">
-                <div>
-                    <span class="hybrid-label">MPI Ranks</span>
-                    <select id="mpiRanks">
-                        <option value="1">1</option>
-                        <option value="2" selected>2</option>
-                        <option value="4">4</option>
-                        <option value="8">8</option>
-                        <option value="16">16</option>
-                    </select>
-                </div>
-                <span class="hybrid-x">×</span>
-                <div>
-                    <span class="hybrid-label">OMP Threads</span>
-                    <select id="ompThreads">
-                        <option value="1">1</option>
-                        <option value="2" selected>2</option>
-                        <option value="4">4</option>
-                        <option value="8">8</option>
-                        <option value="16">16</option>
-                    </select>
-                </div>
+    <div class="card-header">
+        <span class="card-title">Benchmark Controls</span>
+    </div>
+    <div class="card-body">
+        <div class="control-grid">
+            <div class="control-group">
+                <label for="implementation">Implementation</label>
+                <select id="implementation" onchange="updateWorkerControls()">
+                    <option value="serial">Serial — Baseline</option>
+                    <option value="openmp">OpenMP</option>
+                    <option value="pthreads">POSIX Threads</option>
+                    <option value="mpi">MPI</option>
+                    <option value="hybrid">Hybrid MPI + OpenMP</option>
+                    <option value="cuda">CUDA (GPU / Simulated)</option>
+                </select>
             </div>
-            <div class="hybrid-total" id="hybridTotal">Total: 4 workers</div>
+
+            <div class="control-group" id="workerGroup">
+                <label for="workers">Workers (Threads / Processes)</label>
+                <select id="workers">
+                    <option value="1">1 worker</option>
+                    <option value="2">2 workers</option>
+                    <option value="4" selected>4 workers</option>
+                    <option value="8">8 workers</option>
+                    <option value="16">16 workers</option>
+                </select>
+            </div>
+
+            <div class="control-group hidden" id="hybridGroup">
+                <label>Hybrid Configuration</label>
+                <div class="hybrid-controls">
+                    <div>
+                        <span class="hybrid-label">MPI Ranks</span>
+                        <select id="mpiRanks">
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="4">4</option>
+                            <option value="8">8</option>
+                            <option value="16">16</option>
+                        </select>
+                    </div>
+                    <span class="hybrid-x">×</span>
+                    <div>
+                        <span class="hybrid-label">OMP Threads</span>
+                        <select id="ompThreads">
+                            <option value="1">1</option>
+                            <option value="2" selected>2</option>
+                            <option value="4">4</option>
+                            <option value="8">8</option>
+                            <option value="16">16</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="hybrid-total" id="hybridTotal">Total: 4 workers</div>
+            </div>
+
+            <div class="control-group hidden" id="cudaGroup">
+                <label for="blockSize">CUDA Block Size (threads / block)</label>
+                <select id="blockSize">
+                    <option value="64">64</option>
+                    <option value="128">128</option>
+                    <option value="256" selected>256</option>
+                    <option value="512">512</option>
+                    <option value="1024">1024</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="dataset">Dataset Path</label>
+                <input type="text" id="dataset"
+                       value="data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv"
+                       placeholder="Relative path to CSV">
+            </div>
         </div>
 
-        <div class="control-group hidden" id="cudaGroup">
-            <label for="blockSize">CUDA Block Size (threads/block)</label>
-            <select id="blockSize">
-                <option value="64">64</option>
-                <option value="128">128</option>
-                <option value="256" selected>256</option>
-                <option value="512">512</option>
-                <option value="1024">1024</option>
-            </select>
+        <div class="cuda-notice hidden" id="cudaNotice">
+            <span class="cuda-notice-icon">⚡</span>
+            <div>
+                <strong>CUDA Implementation</strong> — Source at
+                <code>src/cuda/network_analysis_cuda.cu</code>.
+                Compile with <code>nvcc -O2 -std=c++11 -o results/cuda src/cuda/network_analysis_cuda.cu</code>.
+                No GPU detected on this machine — a <em>simulation</em> will run using verified confusion-matrix values.
+            </div>
         </div>
 
-        <div class="control-group">
-            <label for="dataset">Dataset Path</label>
-            <input type="text" id="dataset"
-                   value="data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv"
-                   placeholder="Path to dataset CSV">
+        <div class="button-row">
+            <div class="btn-group-primary">
+                <button class="btn btn-primary" onclick="runAllBenchmarks()" id="btnRunAll">
+                    <span class="btn-icon">⚡</span> Run All Benchmarks
+                </button>
+                <button class="btn btn-success" onclick="runBenchmark()" id="btnRun">
+                    <span class="btn-icon">▶</span> Run Selected
+                </button>
+                <button class="btn btn-danger" onclick="stopBenchmark()" id="btnStop" disabled>
+                    <span class="btn-icon">⏹</span> Stop
+                </button>
+            </div>
+            <div class="btn-group-secondary">
+                <button class="btn btn-warning btn-secondary" onclick="buildAll()" id="btnBuild">
+                    <span class="btn-icon">🔧</span> Build All
+                </button>
+                <button class="btn btn-secondary" onclick="exportResults()" id="btnExport">
+                    <span class="btn-icon">↓</span> Export CSV
+                </button>
+                <button class="btn btn-secondary" onclick="clearResults()" id="btnClear">
+                    <span class="btn-icon">✕</span> Clear
+                </button>
+            </div>
         </div>
-    </div>
-
-    <!-- CUDA notice -->
-    <div class="cuda-notice hidden" id="cudaNotice">
-        <span class="cuda-notice-icon">⚡</span>
-        <div>
-            <strong>CUDA Implementation</strong> — Source at
-            <code>src/cuda/network_analysis_cuda.cu</code>. Compile with
-            <code>nvcc -O2 -std=c++11 -o results/cuda src/cuda/network_analysis_cuda.cu</code>.
-            No GPU detected on this machine — the dashboard will run a <em>simulation</em>
-            using verified confusion-matrix values.
-        </div>
-    </div>
-
-    <div class="button-row">
-        <button class="btn btn-primary" onclick="runAllBenchmarks()" id="btnRunAll">
-            <span class="btn-icon">⚡</span> Run All Benchmarks
-        </button>
-        <button class="btn btn-success" onclick="runBenchmark()" id="btnRun">
-            <span class="btn-icon">▶</span> Run Selected
-        </button>
-        <button class="btn btn-warning" onclick="buildAll()" id="btnBuild">
-            <span class="btn-icon">🔧</span> Build All
-        </button>
-        <button class="btn btn-danger" onclick="stopBenchmark()" id="btnStop" disabled>
-            <span class="btn-icon">⏹</span> Stop
-        </button>
-        <button class="btn btn-secondary" onclick="exportResults()" id="btnExport">
-            <span class="btn-icon">↓</span> Export CSV
-        </button>
-        <button class="btn btn-secondary" onclick="clearResults()" id="btnClear">
-            <span class="btn-icon">✕</span> Clear History
-        </button>
     </div>
 </div>
 
-<!-- Progress Bar -->
+<!-- ── Progress Bar ───────────────────────────────────────── -->
 <div class="progress-wrap hidden" id="progressWrap">
     <div class="progress-bar" id="progressBar"></div>
     <span class="progress-label" id="progressLabel">Running…</span>
 </div>
 
-<!-- Live Console -->
+<!-- ── Live Console ──────────────────────────────────────── -->
 <div class="card console-card">
-    <div class="card-title-row">
-        <div class="card-title">Live Output</div>
-        <button class="btn-icon-only" onclick="clearConsole()" title="Clear console">✕</button>
+    <div class="console-chrome">
+        <span class="console-chrome-dot chrome-red"></span>
+        <span class="console-chrome-dot chrome-yellow"></span>
+        <span class="console-chrome-dot chrome-green"></span>
+        <span class="console-chrome-title">benchmark output</span>
+        <button class="btn-icon-only" onclick="clearConsole()" title="Clear console" style="width:20px;height:20px;font-size:12px;">✕</button>
     </div>
     <div class="console" id="console">
-        <div class="console-line console-info">Ready — select an implementation and click Run, or use Run All to benchmark everything.</div>
+        <div class="console-line console-info">$ ready — select an implementation and click Run, or use Run All to benchmark everything.</div>
     </div>
 </div>
 
-<!-- Current Results -->
+<!-- ── Latest Results ────────────────────────────────────── -->
 <div class="card results-card hidden" id="resultsCard">
     <div class="card-title-row">
-        <div class="card-title">Latest Results</div>
+        <span class="card-title">Latest Results</span>
         <span class="sim-badge hidden" id="simBadge">Simulated</span>
     </div>
 
-    <div class="metrics-grid" id="metricsGrid">
-        <div class="metric-card metric-time" id="metricTime">
-            <div class="metric-label">Execution Time</div>
-            <div class="metric-value">—</div>
-            <div class="metric-unit">seconds / pass</div>
-        </div>
-        <div class="metric-card metric-throughput" id="metricThroughput">
-            <div class="metric-label">Throughput</div>
-            <div class="metric-value">—</div>
-            <div class="metric-unit">records / sec</div>
-        </div>
-        <div class="metric-card metric-speedup" id="metricSpeedup">
-            <div class="metric-label">Speedup</div>
-            <div class="metric-value">—</div>
-            <div class="metric-unit">vs serial</div>
-        </div>
-        <div class="metric-card metric-efficiency" id="metricEfficiency">
-            <div class="metric-label">Efficiency</div>
-            <div class="metric-value">—</div>
-            <div class="metric-unit">parallel efficiency</div>
-        </div>
-        <div class="metric-card metric-accuracy" id="metricAccuracy">
-            <div class="metric-label">Accuracy</div>
-            <div class="metric-value">—</div>
-            <div class="metric-unit">detection rate</div>
-        </div>
-        <div class="metric-card metric-f1" id="metricF1">
-            <div class="metric-label">F1 Score</div>
-            <div class="metric-value">—</div>
-            <div class="metric-unit">harmonic mean</div>
-        </div>
-    </div>
-
-    <div class="details-grid">
-        <div class="details-section">
-            <div class="details-title">Confusion Matrix</div>
-            <div class="confusion-matrix" id="confusionMatrix">
-                <div class="cm-header">
-                    <span></span>
-                    <span>Pred Normal</span>
-                    <span>Pred Attack</span>
-                </div>
-                <div class="cm-row">
-                    <span class="cm-label">Actual Normal</span>
-                    <span class="cm-value cm-tn" id="cmTN">—</span>
-                    <span class="cm-value cm-fp" id="cmFP">—</span>
-                </div>
-                <div class="cm-row">
-                    <span class="cm-label">Actual Attack</span>
-                    <span class="cm-value cm-fn" id="cmFN">—</span>
-                    <span class="cm-value cm-tp" id="cmTP">—</span>
-                </div>
+    <div style="padding: 0 24px 20px;">
+        <div class="metrics-grid" id="metricsGrid">
+            <div class="metric-card metric-time" id="metricTime">
+                <div class="metric-label">Exec Time</div>
+                <div class="metric-value">—</div>
+                <div class="metric-unit">sec / pass</div>
+            </div>
+            <div class="metric-card metric-throughput" id="metricThroughput">
+                <div class="metric-label">Throughput</div>
+                <div class="metric-value">—</div>
+                <div class="metric-unit">rec / sec</div>
+            </div>
+            <div class="metric-card metric-speedup" id="metricSpeedup">
+                <div class="metric-label">Speedup</div>
+                <div class="metric-value">—</div>
+                <div class="metric-unit">vs serial</div>
+            </div>
+            <div class="metric-card metric-efficiency" id="metricEfficiency">
+                <div class="metric-label">Efficiency</div>
+                <div class="metric-value">—</div>
+                <div class="metric-unit">parallel eff.</div>
+            </div>
+            <div class="metric-card metric-accuracy" id="metricAccuracy">
+                <div class="metric-label">Accuracy</div>
+                <div class="metric-value">—</div>
+                <div class="metric-unit">detection</div>
+            </div>
+            <div class="metric-card metric-f1" id="metricF1">
+                <div class="metric-label">F1 Score</div>
+                <div class="metric-value">—</div>
+                <div class="metric-unit">harmonic</div>
             </div>
         </div>
 
-        <div class="details-section">
-            <div class="details-title">Classification Metrics</div>
-            <div class="accuracy-metrics" id="accuracyMetrics">
-                <div class="acc-row">
-                    <span class="acc-label">Precision</span>
-                    <div class="acc-bar-wrap">
-                        <div class="acc-bar" id="barPrecision" style="width:0%"></div>
-                        <span class="acc-value" id="valPrecision">—</span>
+        <div class="details-grid">
+            <div class="details-section">
+                <div class="details-title">Confusion Matrix</div>
+                <div class="confusion-matrix" id="confusionMatrix">
+                    <div class="cm-header">
+                        <span></span>
+                        <span>Pred Normal</span>
+                        <span>Pred Attack</span>
+                    </div>
+                    <div class="cm-row">
+                        <span class="cm-label">Actual Normal</span>
+                        <span class="cm-value cm-tn" id="cmTN">—</span>
+                        <span class="cm-value cm-fp" id="cmFP">—</span>
+                    </div>
+                    <div class="cm-row">
+                        <span class="cm-label">Actual Attack</span>
+                        <span class="cm-value cm-fn" id="cmFN">—</span>
+                        <span class="cm-value cm-tp" id="cmTP">—</span>
                     </div>
                 </div>
-                <div class="acc-row">
-                    <span class="acc-label">Recall</span>
-                    <div class="acc-bar-wrap">
-                        <div class="acc-bar" id="barRecall" style="width:0%"></div>
-                        <span class="acc-value" id="valRecall">—</span>
+            </div>
+
+            <div class="details-section">
+                <div class="details-title">Classification Metrics</div>
+                <div class="accuracy-metrics" id="accuracyMetrics">
+                    <div class="acc-row">
+                        <span class="acc-label">Precision</span>
+                        <div class="acc-bar-wrap">
+                            <div class="acc-bar" id="barPrecision" style="width:0%"></div>
+                            <span class="acc-value" id="valPrecision">—</span>
+                        </div>
                     </div>
-                </div>
-                <div class="acc-row">
-                    <span class="acc-label">F1 Score</span>
-                    <div class="acc-bar-wrap">
-                        <div class="acc-bar" id="barF1" style="width:0%"></div>
-                        <span class="acc-value" id="valF1">—</span>
+                    <div class="acc-row">
+                        <span class="acc-label">Recall</span>
+                        <div class="acc-bar-wrap">
+                            <div class="acc-bar" id="barRecall" style="width:0%"></div>
+                            <span class="acc-value" id="valRecall">—</span>
+                        </div>
                     </div>
-                </div>
-                <div class="acc-row">
-                    <span class="acc-label">RMSE</span>
-                    <span class="acc-plain" id="valRMSE">—</span>
-                </div>
-                <div class="acc-row">
-                    <span class="acc-label">Status</span>
-                    <span class="acc-status" id="valStatus">—</span>
+                    <div class="acc-row">
+                        <span class="acc-label">F1 Score</span>
+                        <div class="acc-bar-wrap">
+                            <div class="acc-bar" id="barF1" style="width:0%"></div>
+                            <span class="acc-value" id="valF1">—</span>
+                        </div>
+                    </div>
+                    <div class="acc-row">
+                        <span class="acc-label">RMSE</span>
+                        <span class="acc-plain" id="valRMSE">—</span>
+                    </div>
+                    <div class="acc-row">
+                        <span class="acc-label">Status</span>
+                        <span class="acc-status" id="valStatus">—</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Performance Charts -->
+<!-- ── Performance Charts ─────────────────────────────────── -->
 <div class="card charts-card" id="chartsCard">
-    <div class="card-title">Performance Charts</div>
+    <div class="card-header">
+        <span class="card-title">Performance Charts</span>
+    </div>
     <div class="charts-grid">
         <div class="chart-container">
             <div class="chart-title">Speedup vs Workers</div>
@@ -270,7 +295,7 @@
             <canvas id="chartEfficiency"></canvas>
         </div>
         <div class="chart-container">
-            <div class="chart-title">Execution Time (seconds)</div>
+            <div class="chart-title">Execution Time (seconds / pass)</div>
             <canvas id="chartTime"></canvas>
         </div>
         <div class="chart-container">
@@ -280,9 +305,11 @@
     </div>
 </div>
 
-<!-- Results History -->
+<!-- ── Results History ────────────────────────────────────── -->
 <div class="card history-card" id="historyCard">
-    <div class="card-title">Results History</div>
+    <div class="card-header">
+        <span class="card-title">Results History</span>
+    </div>
     <div class="table-wrap">
         <table class="results-table" id="historyTable">
             <thead>
@@ -300,17 +327,22 @@
                 </tr>
             </thead>
             <tbody id="historyBody">
-                <tr><td colspan="10" class="table-empty">No results yet — run a benchmark to populate this table.</td></tr>
+                <tr>
+                    <td colspan="10" class="table-empty">No results yet — run a benchmark to populate this table.</td>
+                </tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- Footer -->
+<!-- ── Footer ────────────────────────────────────────────── -->
 <footer class="footer">
-    <strong>HPC Network Traffic Analysis</strong> — Parallel anomaly detection on UNSW-NB15 &nbsp;·&nbsp;
-    Serial · OpenMP · Pthreads · MPI · Hybrid · CUDA &nbsp;·&nbsp; Flask + Chart.js
+    <strong>HPC Network Traffic Analysis</strong> &nbsp;·&nbsp;
+    Serial · OpenMP · Pthreads · MPI · Hybrid · CUDA &nbsp;·&nbsp;
+    Flask + Chart.js &nbsp;·&nbsp; UNSW-NB15 Dataset
 </footer>
+
+</div><!-- end page-wrap -->
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
