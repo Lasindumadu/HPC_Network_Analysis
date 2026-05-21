@@ -399,18 +399,48 @@ async function loadHistory() {
 
 // ── Charts ────────────────────────────────────────────────────
 function initCharts() {
-    const gridColor = '#1e2a38';
-    const textColor = '#5a6a7a';
+    const gridColor  = '#21262d';
+    const textColor  = '#484f58';
+    const labelColor = '#8b949e';
+
+    const OMP  = '#58a6ff';
+    const PTH  = '#bc8cff';
+    const MPI  = '#db6d28';
+    const HYB  = '#3fb950';
+    const CUDA = '#e3b341';
 
     const baseOpts = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-            legend: { labels: { color: textColor, font: { family: 'Share Tech Mono', size: 11 }, boxWidth: 12 } }
+            legend: {
+                labels: {
+                    color: labelColor,
+                    font: { family: 'JetBrains Mono, monospace', size: 11 },
+                    boxWidth: 10,
+                    boxHeight: 10,
+                    padding: 14,
+                }
+            },
+            tooltip: {
+                backgroundColor: '#161b22',
+                borderColor: '#30363d',
+                borderWidth: 1,
+                titleColor: '#e6edf3',
+                bodyColor: '#8b949e',
+                padding: 10,
+                cornerRadius: 6,
+            }
         },
         scales: {
-            x: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Share Tech Mono', size: 11 } } },
-            y: { grid: { color: gridColor }, ticks: { color: textColor, font: { family: 'Share Tech Mono', size: 11 } } }
+            x: {
+                grid: { color: gridColor, drawBorder: false },
+                ticks: { color: textColor, font: { family: 'JetBrains Mono, monospace', size: 11 } }
+            },
+            y: {
+                grid: { color: gridColor, drawBorder: false },
+                ticks: { color: textColor, font: { family: 'JetBrains Mono, monospace', size: 11 } }
+            }
         }
     };
 
@@ -419,16 +449,16 @@ function initCharts() {
         data: {
             labels: [],
             datasets: [
-                { label: 'Ideal',    data: [], borderColor: '#ffffff22', borderDash: [6,4], pointRadius: 0, tension: 0 },
-                { label: 'OpenMP',   data: [], borderColor: '#00d4ff', backgroundColor: '#00d4ff22', pointRadius: 5, tension: 0.3 },
-                { label: 'Pthreads', data: [], borderColor: '#a371f7', backgroundColor: '#a371f722', pointRadius: 5, tension: 0.3 },
-                { label: 'MPI',      data: [], borderColor: '#ff6b35', backgroundColor: '#ff6b3522', pointRadius: 5, tension: 0.3 },
-                { label: 'Hybrid',   data: [], borderColor: '#3fb950', backgroundColor: '#3fb95022', pointRadius: 5, tension: 0.3 },
-                { label: 'CUDA★',   data: [], borderColor: '#f0b429', backgroundColor: '#f0b42922', pointRadius: 8, pointStyle: 'star', tension: 0 },
+                { label: 'Ideal',    data: [], borderColor: 'rgba(255,255,255,.12)', borderDash: [5,4], pointRadius: 0, tension: 0, borderWidth: 1.5 },
+                { label: 'OpenMP',   data: [], borderColor: OMP,  backgroundColor: OMP  + '18', pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
+                { label: 'Pthreads', data: [], borderColor: PTH,  backgroundColor: PTH  + '18', pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
+                { label: 'MPI',      data: [], borderColor: MPI,  backgroundColor: MPI  + '18', pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
+                { label: 'Hybrid',   data: [], borderColor: HYB,  backgroundColor: HYB  + '18', pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
+                { label: 'CUDA',     data: [], borderColor: CUDA, backgroundColor: CUDA + '18', pointRadius: 7, pointHoverRadius: 9, pointStyle: 'star', tension: 0, borderWidth: 2 },
             ]
         },
         options: { ...baseOpts, scales: { ...baseOpts.scales,
-            y: { ...baseOpts.scales.y, title: { display: true, text: 'Speedup (×)', color: textColor } }
+            y: { ...baseOpts.scales.y, title: { display: true, text: 'Speedup (×)', color: labelColor, font: { size: 11 } } }
         }}
     });
 
@@ -437,14 +467,14 @@ function initCharts() {
         data: {
             labels: [],
             datasets: [
-                { label: 'OpenMP',   data: [], borderColor: '#00d4ff', pointRadius: 5, tension: 0.3 },
-                { label: 'Pthreads', data: [], borderColor: '#a371f7', pointRadius: 5, tension: 0.3 },
-                { label: 'MPI',      data: [], borderColor: '#ff6b35', pointRadius: 5, tension: 0.3 },
-                { label: 'Hybrid',   data: [], borderColor: '#3fb950', pointRadius: 5, tension: 0.3 },
+                { label: 'OpenMP',   data: [], borderColor: OMP,  pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
+                { label: 'Pthreads', data: [], borderColor: PTH,  pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
+                { label: 'MPI',      data: [], borderColor: MPI,  pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
+                { label: 'Hybrid',   data: [], borderColor: HYB,  pointRadius: 4, pointHoverRadius: 6, tension: 0.25, borderWidth: 2 },
             ]
         },
         options: { ...baseOpts, scales: { ...baseOpts.scales,
-            y: { ...baseOpts.scales.y, min: 0, max: 130, title: { display: true, text: 'Efficiency (%)', color: textColor } }
+            y: { ...baseOpts.scales.y, min: 0, max: 130, title: { display: true, text: 'Efficiency (%)', color: labelColor, font: { size: 11 } } }
         }}
     });
 
@@ -453,15 +483,15 @@ function initCharts() {
         data: {
             labels: [],
             datasets: [
-                { label: 'OpenMP',   data: [], backgroundColor: '#00d4ff88', borderRadius: 4 },
-                { label: 'Pthreads', data: [], backgroundColor: '#a371f788', borderRadius: 4 },
-                { label: 'MPI',      data: [], backgroundColor: '#ff6b3588', borderRadius: 4 },
-                { label: 'Hybrid',   data: [], backgroundColor: '#3fb95088', borderRadius: 4 },
-                { label: 'CUDA★',   data: [], backgroundColor: '#f0b42988', borderRadius: 4 },
+                { label: 'OpenMP',   data: [], backgroundColor: OMP  + 'aa', borderRadius: 3 },
+                { label: 'Pthreads', data: [], backgroundColor: PTH  + 'aa', borderRadius: 3 },
+                { label: 'MPI',      data: [], backgroundColor: MPI  + 'aa', borderRadius: 3 },
+                { label: 'Hybrid',   data: [], backgroundColor: HYB  + 'aa', borderRadius: 3 },
+                { label: 'CUDA',     data: [], backgroundColor: CUDA + 'aa', borderRadius: 3 },
             ]
         },
         options: { ...baseOpts, scales: { ...baseOpts.scales,
-            y: { ...baseOpts.scales.y, title: { display: true, text: 'Time (seconds)', color: textColor } }
+            y: { ...baseOpts.scales.y, title: { display: true, text: 'Time (seconds)', color: labelColor, font: { size: 11 } } }
         }}
     });
 
@@ -470,15 +500,15 @@ function initCharts() {
         data: {
             labels: [],
             datasets: [
-                { label: 'OpenMP',   data: [], backgroundColor: '#00d4ff88', borderRadius: 4 },
-                { label: 'Pthreads', data: [], backgroundColor: '#a371f788', borderRadius: 4 },
-                { label: 'MPI',      data: [], backgroundColor: '#ff6b3588', borderRadius: 4 },
-                { label: 'Hybrid',   data: [], backgroundColor: '#3fb95088', borderRadius: 4 },
-                { label: 'CUDA★',   data: [], backgroundColor: '#f0b42988', borderRadius: 4 },
+                { label: 'OpenMP',   data: [], backgroundColor: OMP  + 'aa', borderRadius: 3 },
+                { label: 'Pthreads', data: [], backgroundColor: PTH  + 'aa', borderRadius: 3 },
+                { label: 'MPI',      data: [], backgroundColor: MPI  + 'aa', borderRadius: 3 },
+                { label: 'Hybrid',   data: [], backgroundColor: HYB  + 'aa', borderRadius: 3 },
+                { label: 'CUDA',     data: [], backgroundColor: CUDA + 'aa', borderRadius: 3 },
             ]
         },
         options: { ...baseOpts, scales: { ...baseOpts.scales,
-            y: { ...baseOpts.scales.y, title: { display: true, text: 'Throughput (rec/s)', color: textColor } }
+            y: { ...baseOpts.scales.y, title: { display: true, text: 'Throughput (rec/s)', color: labelColor, font: { size: 11 } } }
         }}
     });
 
