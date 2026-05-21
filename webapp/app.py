@@ -416,10 +416,13 @@ def run():
     """
     data = request.get_json() or {}
     implementation = data.get('implementation', 'serial')
-    workers = int(data.get('workers', 1))
     dataset = get_dataset_path(data.get('dataset'))
     mpi_ranks = int(data.get('mpi_ranks', 2))
     omp_threads = int(data.get('omp_threads', 2))
+    if implementation == 'hybrid':
+        workers = mpi_ranks * omp_threads
+    else:
+        workers = int(data.get('workers', 1))
     
     # Validate dataset exists
     if not os.path.exists(dataset):
