@@ -6,6 +6,8 @@ NVCC = nvcc
 CFLAGS = -Wall -O2 -std=c11 -lm
 OMPFLAGS = -fopenmp
 PTHREADFLAGS = -pthread
+# -arch=native picks the best code for the current GPU; fall back to sm_50 on
+# older cards.  Override on the command line: make NVCCFLAGS="-O2 -arch=sm_86"
 NVCCFLAGS = -O2 -std=c++11
 
 # Directories
@@ -36,6 +38,7 @@ all: directories $(SERIAL) $(OPENMP) $(PTHREADS) $(MPI) $(HYBRID) cuda-optional
 
 directories:
 	@mkdir -p $(RESULTS_DIR)
+	@mkdir -p $(RESULTS_DIR)/logs
 
 # Serial implementation
 $(SERIAL): $(SERIAL_SRC)
@@ -110,8 +113,16 @@ run-hybrid: $(HYBRID)
 		OMP_NUM_THREADS=$$nt mpirun --allow-run-as-root --oversubscribe -np $$np $(HYBRID) data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv; \
 	done
 
+# Run CUDA (requires compiled binary and CUDA-capable GPU)
+run-cuda: $(CUDA)
+	@echo "Running CUDA..."
+	@$(CUDA) data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv 256
+
+# Build CUDA binary only (useful for machines with nvcc)
+cuda: $(CUDA)
+
 # Clean
 clean:
 	rm -f $(SERIAL) $(OPENMP) $(PTHREADS) $(MPI) $(HYBRID) $(CUDA)
 
-.PHONY: all directories clean cuda-optional run-serial run-openmp run-pthreads run-mpi run-hybrid
+.PHONY: all directories clean cuda-optional cuda run-serial run-openmp run-pthreads run-mpi run-hybrid run-cuda
