@@ -56,7 +56,7 @@ Detection runs purely on traffic features. Ground-truth labels are used **only f
 | Hybrid 2×2 | 4 | 0.115 | 3.83× | 96% |
 | Hybrid 4×2 | 8 | 0.065 | 6.82× | 85% |
 | Hybrid 4×4 | 16 | 0.071 | 6.20× | 39% |
-| CUDA | GPU | 0.048 | 9.20× | — |
+| CUDA | Tesla T4 | 0.0024 | ~183× | — |
 
 > Super-linear speedups (>100%) at low worker counts occur because parallel implementations load the full dataset into RAM once, while serial re-reads from disk each repeat pass.
 
@@ -68,7 +68,7 @@ Detection runs purely on traffic features. Ground-truth labels are used **only f
 | Recall | 65.087% |
 | F1 Score | 58.518% |
 | RMSE | 0.171126 |
-| TP / TN / FP / FN | 14,457 / 665,048 / 12,741 / 7,755 |
+| TP / TN / FP / FN | 14,459 / 665,043 / 12,743 / 7,756 |
 
 ---
 

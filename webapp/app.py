@@ -218,7 +218,7 @@ def check_binary(impl):
 
 # Confusion matrix values per dataset (CUDA uses identical detect() — same results as CPU)
 # Large dataset: UNSW-NB15_1_with_header.csv  (700,001 records — derived from logged metrics)
-_CUDA_LARGE = {'tp': 14457, 'fp': 12741, 'fn': 7755,  'tn': 665048, 'total': 700001}
+_CUDA_LARGE = {'tp': 14459, 'fp': 12743, 'fn': 7756,  'tn': 665043, 'total': 700001}
 # Small dataset: UNSW_NB15_training-set.csv   (82,332 records — from code comments)
 _CUDA_SMALL = {'tp': 32552, 'fp': 8712,  'fn': 12780, 'tn': 28288,  'total': 82332}
 _CUDA_REPEAT = 50
