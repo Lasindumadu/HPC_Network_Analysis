@@ -366,11 +366,11 @@ int main(int argc, char *argv[]) {
     printf("=== Detection Results ===\n");
     printf("Records/pass: %d | Passes: %d | Total processed: %ld\n",
            total, REPEAT_FACTOR, total_recs);
-    printf("Attacks: %ld | Normal: %ld  (first pass)\n", TP+FP, TN+FN);
-    printf("GPU time (total x%d):  %.4fs  (%.2f ms/pass)\n",
-           REPEAT_FACTOR, (double)gpu_ms/1000.0, (double)gpu_ms/REPEAT_FACTOR);
+    printf("Attacks: %ld | Normal: %ld\n", TP+FP, TN+FN);
+    printf("Total time (x%d): %.4fs\n",
+           REPEAT_FACTOR, (double)gpu_ms/1000.0);
     printf("CPU wall time (total): %.4fs\n", cpu_elapsed);
-    printf("Throughput (GPU):      %.0f rec/s\n\n",
+    printf("Throughput: %.0f rec/s\n\n",
            (double)total_recs/((double)gpu_ms/1000.0));
 
     printf("=== Confusion Matrix (first pass) ===\n");
@@ -393,33 +393,36 @@ int main(int argc, char *argv[]) {
     else if (accuracy > 65.0) printf("Status: ACCEPTABLE\n");
     else                       printf("Status: POOR\n");
 
+    /* ── Single-pass time (parsed by web app) ── */
+    printf("Single-pass time: %.4fs\n", single_time);
+    printf("Grid: %d blocks x %d threads = %d total threads\n",
+           grid_size, block_size, grid_size*block_size);
+
     /* ── Speedup vs serial ─────────────────────── */
-    FILE *tf = fopen("../../results/serial_time.txt", "r");
+    FILE *tf = fopen("results/serial_time.txt", "r");
+    if (!tf) tf = fopen("../../results/serial_time.txt", "r");
     if (!tf) tf = fopen("serial_time.txt", "r");
     if (tf) {
-        double serial_time;
-        if (fscanf(tf, "%lf", &serial_time) == 1) {
-            double speedup = serial_time / single_time;
+        double serial_t;
+        if (fscanf(tf, "%lf", &serial_t) == 1) {
+            double speedup = serial_t / single_time;
             printf("\n=== Speedup vs Serial ===\n");
-            printf("Serial time (1 pass):  %.4fs\n", serial_time);
+            printf("Serial time (1 pass):  %.4fs\n", serial_t);
             printf("CUDA   time (1 pass):  %.4fs\n", single_time);
-            printf("Speedup:               %.2fx\n", speedup);
+            printf("Speedup: %.2fx\n", speedup);
             printf("(Note: excludes one-time H2D transfer of %.2f MB)\n",
                    (double)sizeof(RecordGPU)*total/1e6);
         }
         fclose(tf);
     }
 
-    /* save CUDA time */
-    FILE *cf = fopen("../../results/cuda_time.txt", "w");
+    /* ── Save CUDA time ─────────────────────────── */
+    FILE *cf = fopen("results/cuda_time.txt", "w");
+    if (!cf) cf = fopen("../../results/cuda_time.txt", "w");
     if (!cf) cf = fopen("cuda_time.txt", "w");
     if (cf) { fprintf(cf, "%.6f\n", single_time); fclose(cf); }
 
-    printf("\nSingle-pass time (GPU): %.4fs  (saved)\n", single_time);
-    printf("Grid: %d blocks x %d threads = %d total threads\n",
-           grid_size, block_size, grid_size*block_size);
-
-    /* save log */
+    /* ── Save log ───────────────────────────────── */
     { int _r = system("mkdir -p results/logs"); (void)_r; }
     FILE *lf = fopen("results/logs/cuda.log", "w");
     if (!lf) lf = fopen("cuda.log", "w");
@@ -436,9 +439,10 @@ int main(int argc, char *argv[]) {
         fprintf(lf, "F1 Score:  %.3f%%\n",  f1);
         fprintf(lf, "RMSE:      %.6f \n",   rmse);
         fprintf(lf, "Single-pass time: %.4fs\n", single_time);
-        fprintf(lf, "Total GPU time (x%d): %.4fs\n",
+        fprintf(lf, "Total time (x%d): %.4fs\n",
                 REPEAT_FACTOR, (double)gpu_ms/1000.0);
-        FILE *st = fopen("../../results/serial_time.txt", "r");
+        FILE *st = fopen("results/serial_time.txt", "r");
+        if (!st) st = fopen("../../results/serial_time.txt", "r");
         if (!st) st = fopen("serial_time.txt", "r");
         if (st) {
             double st2;
