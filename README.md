@@ -4,7 +4,7 @@
 **Team Members:**
 | Index No. | Name |
 |-----------|------|
-| EG/2021/4426 | Bandara AWLM |
+| EG/2021/4426 | Bandara AWMLM |
 | EG/2021/4432 | Bandara KMTON |
 | EG/2021/4433 | Bandara LRTD |
 
