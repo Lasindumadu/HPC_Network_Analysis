@@ -500,7 +500,7 @@ def run():
             serial_time = get_serial_baseline()
             if serial_time and serial_time > 0:
                 metrics['speedup'] = serial_time / metrics['single_time']
-                if implementation != 'serial':
+                if implementation not in ('serial', 'cuda'):
                     metrics['efficiency'] = (metrics['speedup'] / workers) * 100.0
         
         result = {
