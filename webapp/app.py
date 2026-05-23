@@ -175,6 +175,14 @@ def run_command(cmd, env=None):
             current_process = None
             is_running = False
 
+def save_log(filename, content):
+    """Write raw program output to results/logs/<filename>."""
+    try:
+        with open(os.path.join(LOGS_DIR, filename), 'w', encoding='utf-8') as f:
+            f.write(content)
+    except IOError:
+        pass
+
 def save_result(result):
     """Append result to JSON history file."""
     results = []
@@ -556,6 +564,7 @@ def run_all():
                 yield sse_event('output', text=line)
             
             output = '\n'.join(output_lines)
+            save_log('serial.log', output)
             metrics = parse_output(output)
             result = {
                 'implementation': 'serial',
@@ -588,6 +597,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'openmp_{w}t.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'openmp',
@@ -619,6 +629,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'pthreads_{w}t.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'pthreads',
@@ -651,6 +662,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'mpi_{w}p.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'mpi',
@@ -687,6 +699,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'hybrid_{np_val}p_{nt_val}t.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'hybrid',
@@ -717,12 +730,14 @@ def run_all():
                         output_lines.append(line)
                         yield sse_event('output', text=line)
                     output = '\n'.join(output_lines)
+                    save_log('cuda.log', output)
                     metrics = parse_output(output)
                     simulated = False
                 else:
                     lines, metrics = simulate_cuda(dataset, bs)
                     for line in lines:
                         yield sse_event('output', text=line)
+                    save_log('cuda.log', '\n'.join(lines))
                     simulated = True
 
                 result = {
