@@ -2,8 +2,11 @@
 data/
 *.csv
 <<<<<<< HEAD
+<<<<<<< HEAD
 venv/
 =======
+=======
+>>>>>>> 1ccca3f01ba08d6e0851fea304cd4208a5cf20ee
 
 # ── Compiled binaries ──────────────────────────────────────────
 results/serial
@@ -65,4 +68,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+<<<<<<< HEAD
 >>>>>>> origin/main
+=======
+>>>>>>> 1ccca3f01ba08d6e0851fea304cd4208a5cf20ee
