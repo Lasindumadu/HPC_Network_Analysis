@@ -1,6 +1,4 @@
 # HPC Network Traffic Analysis
-<<<<<<< HEAD
-<<<<<<< HEAD
 ## EC7207 — High Performance Computing
 
 **Team Members:**
@@ -11,13 +9,6 @@
 | EG/2021/4433 | Bandara LRTD |
 ** End**
 =======
-=======
->>>>>>> 1ccca3f01ba08d6e0851fea304cd4208a5cf20ee
-**EC7207 — High Performance Computing**  
-**Team:** EG/2021/4426 · EG/2021/4432 · EG/2021/4433
-
->>>>>>> origin/main
----
 
 ## Overview
 
