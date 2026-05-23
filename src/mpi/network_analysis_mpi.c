@@ -13,22 +13,18 @@
  * CORRECTNESS GUARANTEE:
  *   Since each record is scored independently (no shared state),
  *   the confusion matrix must match the serial baseline exactly:
- *     TP=32552  FP=8712  FN=12780  TN=28288
  *
  * COMPILATION:
  *   mpicc -Wall -O2 -std=c11 -lm -o results/mpi src/mpi/network_analysis_mpi.c
  *
  * RUNNING:
- *   mpirun -np 1 ./results/mpi data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv
- *   mpirun -np 2 ./results/mpi data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv
- *   mpirun -np 4 ./results/mpi data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv
- *   mpirun -np 8 ./results/mpi data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv
+ *   mpirun -np 1 ./results/mpi data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
+ *   mpirun -np 2 ./results/mpi data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
+ *   mpirun -np 4 ./results/mpi data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
+ *   mpirun -np 8 ./results/mpi data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
  * ════════════════════════════════════════════════════════════════
  */
 
-/* _POSIX_C_SOURCE MUST be first — before ANY #include —
-   so that strdup, clock_gettime, CLOCK_MONOTONIC are visible
-   even after mpi.h is included.                              */
 #define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
@@ -217,7 +213,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs); /* get total number of processes in the communicator */
 
     const char *file = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
+        "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv";
 
     if (rank == 0) {
         printf("=== MPI Network Traffic Anomaly Detection ===\n");

@@ -5,13 +5,13 @@ Run this to find exactly which feature values separate attacks from normal.
 Output guides threshold tuning in the C detector.
 
 Usage:
-  python3 analyze_features.py /path/to/UNSW_NB15_training-set.csv
+  python3 analyze_features.py data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
 """
 import sys, csv, math
 from collections import defaultdict
 
 FILE = sys.argv[1] if len(sys.argv) > 1 else \
-    "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv"
+    "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv"
 
 def safe_float(v):
     try: return float(v)

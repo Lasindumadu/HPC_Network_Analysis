@@ -77,14 +77,14 @@ cuda-optional:
 # Run serial baseline first (required for speedup calculation)
 run-serial: $(SERIAL)
 	@echo "Running Serial Baseline..."
-	@$(SERIAL) data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv
+	@$(SERIAL) data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
 
 # Run OpenMP
 run-openmp: $(OPENMP)
 	@echo "Running OpenMP..."
 	@for t in 1 2 4 8 16; do \
 		echo "  OpenMP with $$t threads"; \
-		OMP_NUM_THREADS=$$t $(OPENMP) data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv; \
+		OMP_NUM_THREADS=$$t $(OPENMP) data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv; \
 	done
 
 # Run Pthreads
@@ -92,7 +92,7 @@ run-pthreads: $(PTHREADS)
 	@echo "Running Pthreads..."
 	@for t in 1 2 4 8 16; do \
 		echo "  Pthreads with $$t threads"; \
-		$(PTHREADS) data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv $$t; \
+		$(PTHREADS) data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv $$t; \
 	done
 
 # Run MPI
@@ -100,7 +100,7 @@ run-mpi: $(MPI)
 	@echo "Running MPI..."
 	@for p in 1 2 4 8 16; do \
 		echo "  MPI with $$p processes"; \
-		mpirun --allow-run-as-root --oversubscribe -np $$p $(MPI) data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv; \
+		mpirun --allow-run-as-root --oversubscribe -np $$p $(MPI) data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv; \
 	done
 
 # Run Hybrid MPI + OpenMP
@@ -110,7 +110,7 @@ run-hybrid: $(HYBRID)
 		np=$$(echo $$combo | cut -d, -f1); \
 		nt=$$(echo $$combo | cut -d, -f2); \
 		echo "  Hybrid: $$np MPI ranks x $$nt OpenMP threads"; \
-		OMP_NUM_THREADS=$$nt mpirun --allow-run-as-root --oversubscribe -np $$np $(HYBRID) data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv; \
+		OMP_NUM_THREADS=$$nt mpirun --allow-run-as-root --oversubscribe -np $$np $(HYBRID) data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv; \
 	done
 
 # Run CUDA (requires compiled binary and CUDA-capable GPU)

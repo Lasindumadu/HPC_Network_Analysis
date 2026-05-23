@@ -31,8 +31,8 @@ static int MIN_F;
 /* ── Timing ──────────────────────────────────── */
 static double now() {
     struct timespec t;
-    clock_gettime(CLOCK_MONOTONIC, &t);        /* read high-resolution monotonic clock — unaffected by system time changes */
-    return t.tv_sec + t.tv_nsec * 1e-9;       /* convert to fractional seconds (e.g. 1.426743s) */
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec + t.tv_nsec * 1e-9;
 }
 
 /* ── Row parsing — zero-malloc stack-based parser ───
@@ -81,8 +81,8 @@ static inline const char *fs(Row *r, int c) { return (c>=0&&c<r->n)             
 
 /* ── Column detection ────────────────────────── */
 static void detect_columns(const char *hdr) {
-    Row r; char *h = strdup(hdr);              /* duplicate header string so we can modify it without altering the original */
-    h[strcspn(h, "\n")] = '\0';               /* find first newline character and replace it with null terminator */
+    Row r; char *h = strdup(hdr);
+    h[strcspn(h, "\n")] = '\0';
     parse(h, &r);
 
     struct { const char *n; int *t; } m[] = {
@@ -224,26 +224,27 @@ static ProtoStat *proto_slot(const char *p) {
 /* ═══════════════════════════════════════════════ */
 int main(int argc, char *argv[]) {
     const char *file = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_1.csv/UNSW-NB15_1_with_header.csv";
+        "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv";
 
     printf("=== Serial Network Traffic Anomaly Detection ===\n");
     memset(ptable, 0, sizeof(ptable));
     printf("File: %s\n", file);
-    printf("Repeat factor: %d  (total records: ~%d)\n\n",
-           REPEAT_FACTOR, 82332 * REPEAT_FACTOR);
+    printf("Repeat factor: %d
+
+", REPEAT_FACTOR);
 
     /* detect columns from header */
-    FILE *fp = fopen(file, "r");                /* open dataset CSV file in read mode */
-    if (!fp) { perror(file); return 1; }        /* perror prints OS-level error message (e.g. "No such file") then exit */
+    FILE *fp = fopen(file, "r");
+    if (!fp) { perror(file); return 1; }
     char ln[MAX_LINE];
-    if (!fgets(ln, MAX_LINE, fp)) {   /* FIX: check return value */
+    if (!fgets(ln, MAX_LINE, fp)) {
         fprintf(stderr, "Empty file\n"); fclose(fp); return 1;
     }
     detect_columns(ln);
 
     /* count records */
     int nrec = 0;
-    while (fgets(ln, MAX_LINE, fp)) if (ln[0] != '\n') nrec++;  /* count non-empty lines to know records per pass before main loop */
+    while (fgets(ln, MAX_LINE, fp)) if (ln[0] != '\n') nrec++;
     fclose(fp);                                                  /* close file after counting — will reopen once per repeat in main loop */
     printf("Records per pass: %d\n\n", nrec);
 
@@ -251,13 +252,13 @@ int main(int argc, char *argv[]) {
     long tot = 0, TP = 0, TN = 0, FP = 0, FN = 0;
     double sse = 0.0;
 
-    double t0 = now();                          /* record start time — measured after file pre-scan so I/O setup is excluded */
+    double t0 = now();
 
     for (int rep = 0; rep < REPEAT_FACTOR; rep++) {
-        fp = fopen(file, "r");                  /* reopen file at start of each repeat — serial reads from disk every pass */
+        fp = fopen(file, "r");
         if (!fp) { perror(file); return 1; }
 
-        if (!fgets(ln, MAX_LINE, fp)) {   /* FIX: check return value */
+        if (!fgets(ln, MAX_LINE, fp)) {
             fclose(fp); break;
         }
 
@@ -276,7 +277,7 @@ int main(int argc, char *argv[]) {
             sse += (double)(pred - act) * (pred - act);
             tot++;
 
-            ProtoStat *ps = proto_slot(fs(&r, C_PROTO));  /* look up or create hash table entry for this record's protocol */
+            ProtoStat *ps = proto_slot(fs(&r, C_PROTO));
             if (pred) ps->att++;  else ps->norm++;
 
             /* confusion matrix — first pass only */
@@ -289,10 +290,10 @@ int main(int argc, char *argv[]) {
 
             free_row(&r);
         }
-        fclose(fp);   /* close file at end of each repeat pass before reopening next iteration */
+        fclose(fp);
     }
 
-    double elapsed     = now() - t0;              /* total wall-clock time for all REPEAT_FACTOR passes */
+    double elapsed     = now() - t0;
     double single_time = elapsed / REPEAT_FACTOR;
     long   single_pass = tot / REPEAT_FACTOR;
 
@@ -357,7 +358,6 @@ double recall =
     else                       printf("Status: POOR\n");
 
     /* save single-pass time for speedup comparison */
-/* save single-pass time for speedup comparison */
 int _r = system("mkdir -p results/logs");
 (void)_r;
 
