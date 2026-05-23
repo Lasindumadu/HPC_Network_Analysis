@@ -26,12 +26,14 @@ echo "=========================================="
 echo ""
 
 # ── Always clean: logs, charts, timing files ──────────────────
-info "Removing log files..."
+info "Removing unwanted
+log files..."
 rm -rf results/logs/
 mkdir -p results/logs
 info "  results/logs/ cleared"
 
-info "Removing timing files..."
+info "Removing unwanted 
+timing files..."
 rm -f results/serial_time.txt
 rm -f results/openmp_time.txt
 rm -f results/pthreads_time.txt
@@ -71,4 +73,4 @@ if ! $CLEAN_ALL; then
     echo "  To rebuild:       make all"
     echo "  To run again:     ./run_all.sh"
 fi
-echo "=========================================="
+echo "========================================================="
