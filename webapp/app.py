@@ -250,6 +250,7 @@ def simulate_cuda(dataset_path, block_size=256):
     precision = tp / (tp + fp) * 100
     recall    = tp / (tp + fn) * 100
     f1        = 2 * precision * recall / (precision + recall)
+    rmse      = ((fp + fn) / total) ** 0.5
 
     grid_size = (total + block_size - 1) // block_size
 
@@ -290,7 +291,7 @@ def simulate_cuda(dataset_path, block_size=256):
         f"  Precision:  {precision:.2f}%",
         f"  Recall:     {recall:.2f}%",
         f"  F1 Score:   {f1:.2f}%",
-        f"  RMSE:       0.000000",
+        f"  RMSE:       {rmse:.6f} ({rmse*100:.4f}%)",
         "",
         f"  Speedup: {speedup:.2f}x",
         "  Efficiency: 100.0%  (GPU fully utilised — not comparable to CPU metric)",
@@ -312,7 +313,7 @@ def simulate_cuda(dataset_path, block_size=256):
         'precision':    precision,
         'recall':       recall,
         'f1':           f1,
-        'rmse':         0.0,
+        'rmse':         rmse,
         'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp,
         'status':       'GOOD',
         'simulated':    True,
