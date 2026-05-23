@@ -1,7 +1,5 @@
 /*
- * HPC Network Traffic Analysis - CUDA Implementation
- * Course: EC7207 - High Performance Computing
- * Authors: EG/2021/4426, EG/2021/4432, EG/2021/4433
+
  *
  * PARALLELISATION STRATEGY:
  *   CPU: Parse CSV, encode string fields (state/proto/service) as ints,

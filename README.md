@@ -1,7 +1,19 @@
 # HPC Network Traffic Analysis
+<<<<<<< HEAD
+## EC7207 — High Performance Computing
+
+**Team Members:**
+| Index No. | Name |
+|-----------|------|
+| EG/2021/4426 | Bandara AWMLM |
+| EG/2021/4432 | Bandara KMTON |
+| EG/2021/4433 | Bandara LRTD |
+** End**
+=======
 **EC7207 — High Performance Computing**  
 **Team:** EG/2021/4426 · EG/2021/4432 · EG/2021/4433
 
+>>>>>>> origin/main
 ---
 
 ## Overview

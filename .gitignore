@@ -1,6 +1,9 @@
 # ── Dataset (too large for git) ───────────────────────────────
 data/
 *.csv
+<<<<<<< HEAD
+venv/
+=======
 
 # ── Compiled binaries ──────────────────────────────────────────
 results/serial
@@ -62,3 +65,4 @@ Thumbs.db
 *.swp
 *.swo
 *~
+>>>>>>> origin/main
