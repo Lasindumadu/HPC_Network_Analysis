@@ -1,18 +1,9 @@
 /*
- * HPC Network Traffic Analysis - POSIX Threads Implementation (FIXED)
+ * HPC Network Traffic Analysis - POSIX Threads Implementation
  * Course: EC7207 - High Performance Computing
  * Authors: EG/2021/4426, EG/2021/4432, EG/2021/4433
- *
+ * *
  * ════════════════════════════════════════════════════════════════
- * FIX SUMMARY (why the old version was wrong):
- *   OLD: Used field index 44 (attack_cat string) for prediction.
- *        This is a different detection method from serial/OpenMP/MPI.
- *        Confusion matrix and RMSE did NOT match baseline.
- *
- *   NEW: Uses the IDENTICAL detect() scoring function from serial,
- *        OpenMP, and MPI. Results are guaranteed to match:
- *          TP=32552  FP=8712  FN=12780  TN=28288
- *
  * PARALLELISATION STRATEGY:
  *   All records loaded into memory first (same as OpenMP).
  *   Split into equal chunks — one chunk per thread.
@@ -26,10 +17,10 @@
  *       -o results/pthreads src/pthreads/network_analysis_pthread.c
  *
  * RUNNING:
- *   ./results/pthreads data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv 1
- *   ./results/pthreads data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv 2
- *   ./results/pthreads data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv 4
- *   ./results/pthreads data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv 8
+ *   ./results/pthreads data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv 1
+ *   ./results/pthreads data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv 2
+ *   ./results/pthreads data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv 4
+ *   ./results/pthreads data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv 8
  * ════════════════════════════════════════════════════════════════
  */
 
@@ -139,8 +130,6 @@ static void detect_columns(const char *hdr) {
  *     global column index constants (set once, then read-only).
  *   - No shared mutable state.  No synchronisation needed here.
  *
- * Confusion matrix guarantee (matches serial baseline exactly):
- *   TP=32552  FP=8712  FN=12780  TN=28288
  * ═══════════════════════════════════════════════════════════════ */
 static int detect(Row *r) {
     const char *st  = fs(r, C_STATE);
@@ -252,7 +241,7 @@ static void *worker(void *arg) {
 /* ─── MAIN ───────────────────────────────────────────────────── */
 int main(int argc, char *argv[]) {
     const char *file     = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
+        "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv";
     int nthreads = argc > 2 ? atoi(argv[2]) : 4;
     if (nthreads < 1)           nthreads = 1;
     if (nthreads > MAX_THREADS) nthreads = MAX_THREADS;

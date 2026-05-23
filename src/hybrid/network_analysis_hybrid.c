@@ -19,7 +19,6 @@
  * CORRECTNESS GUARANTEE:
  *   Identical detect() function to serial/OpenMP/MPI/Pthreads.
  *   Confusion matrix must match baseline exactly:
- *     TP=32552  FP=8712  FN=12780  TN=28288
  *
  * COMPILATION:
  *   mpicc -Wall -O2 -std=c11 -fopenmp -lm \
@@ -27,7 +26,7 @@
  *
  * RUNNING (e.g. 4 MPI ranks × 4 OpenMP threads = 16-way):
  *   OMP_NUM_THREADS=4 mpirun -np 4 ./results/hybrid \
- *       data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv
+ *       data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
  *
  *   OMP_NUM_THREADS=2 mpirun -np 2 ./results/hybrid data/...
  *   OMP_NUM_THREADS=8 mpirun -np 1 ./results/hybrid data/...
@@ -207,7 +206,7 @@ int main(int argc, char *argv[]) {
     int nthreads = omp_get_max_threads();   /* read OMP_NUM_THREADS */
 
     const char *file = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
+        "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv";
 
     if (rank == 0) {
         printf("=== Hybrid MPI+OpenMP Network Traffic Anomaly Detection ===\n");

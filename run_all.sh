@@ -65,7 +65,7 @@ for cfg in $hybrid_configs; do
   np=$(echo $cfg | cut -dx -f1)
   nt=$(echo $cfg | cut -dx -f2)
   echo "--- Hybrid: $np MPI rank(s) x $nt OpenMP thread(s) ---"
-  OMP_NUM_THREADS=$nt mpirun --allow-run-as-root --oversubscribe -np $np ./results/hybrid "$DATA" | tee results/logs/hybrid_${cfg}.log
+  OMP_NUM_THREADS=$nt mpirun --allow-run-as-root --oversubscribe -np $np ./results/hybrid "$DATA" | tee results/logs/hybrid_${np}p_${nt}t.log
 done
 
 # ============================================================
@@ -84,6 +84,8 @@ echo "Logs: results/logs/"
 echo ""
 echo "Generate charts:"
 echo "  python3 generate_charts.py"
+echo "  python3 generate_charts2.py"
+echo "  python3 generate_charts3.py"
 echo ""
 echo "Verify correctness:"
 echo "  python3 verify_results.py"

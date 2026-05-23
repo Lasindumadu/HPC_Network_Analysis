@@ -27,6 +27,7 @@ output_buffer = []
 output_lock = threading.Lock()
 current_process = None
 is_running = False
+stop_all_requested = False
 
 # Ensure directories exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -174,6 +175,14 @@ def run_command(cmd, env=None):
             current_process = None
             is_running = False
 
+def save_log(filename, content):
+    """Write raw program output to results/logs/<filename>."""
+    try:
+        with open(os.path.join(LOGS_DIR, filename), 'w', encoding='utf-8') as f:
+            f.write(content)
+    except IOError:
+        pass
+
 def save_result(result):
     """Append result to JSON history file."""
     results = []
@@ -218,7 +227,7 @@ def check_binary(impl):
 
 # Confusion matrix values per dataset (CUDA uses identical detect() — same results as CPU)
 # Large dataset: UNSW-NB15_1_with_header.csv  (700,001 records — derived from logged metrics)
-_CUDA_LARGE = {'tp': 14457, 'fp': 12741, 'fn': 7755,  'tn': 665048, 'total': 700001}
+_CUDA_LARGE = {'tp': 14459, 'fp': 12743, 'fn': 7756,  'tn': 665043, 'total': 700001}
 # Small dataset: UNSW_NB15_training-set.csv   (82,332 records — from code comments)
 _CUDA_SMALL = {'tp': 32552, 'fp': 8712,  'fn': 12780, 'tn': 28288,  'total': 82332}
 _CUDA_REPEAT = 50
@@ -250,6 +259,7 @@ def simulate_cuda(dataset_path, block_size=256):
     precision = tp / (tp + fp) * 100
     recall    = tp / (tp + fn) * 100
     f1        = 2 * precision * recall / (precision + recall)
+    rmse      = ((fp + fn) / total) ** 0.5
 
     grid_size = (total + block_size - 1) // block_size
 
@@ -290,7 +300,7 @@ def simulate_cuda(dataset_path, block_size=256):
         f"  Precision:  {precision:.2f}%",
         f"  Recall:     {recall:.2f}%",
         f"  F1 Score:   {f1:.2f}%",
-        f"  RMSE:       0.000000",
+        f"  RMSE:       {rmse:.6f} ({rmse*100:.4f}%)",
         "",
         f"  Speedup: {speedup:.2f}x",
         "  Efficiency: 100.0%  (GPU fully utilised — not comparable to CPU metric)",
@@ -312,7 +322,7 @@ def simulate_cuda(dataset_path, block_size=256):
         'precision':    precision,
         'recall':       recall,
         'f1':           f1,
-        'rmse':         0.0,
+        'rmse':         rmse,
         'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp,
         'status':       'GOOD',
         'simulated':    True,
@@ -540,6 +550,9 @@ def run_all():
     
     @stream_with_context
     def generate():
+        global stop_all_requested
+        stop_all_requested = False   # reset on each new run-all
+
         # Run serial first for baseline
         if 'serial' in implementations:
             yield sse_event('header', text='=== Running Serial Baseline ===')
@@ -551,6 +564,7 @@ def run_all():
                 yield sse_event('output', text=line)
             
             output = '\n'.join(output_lines)
+            save_log('serial.log', output)
             metrics = parse_output(output)
             result = {
                 'implementation': 'serial',
@@ -562,10 +576,17 @@ def run_all():
             }
             save_result(result)
             yield sse_event('result', data=result)
-        
+
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run OpenMP
         if 'openmp' in implementations:
             for w in worker_counts:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 yield sse_event('header', text=f'=== Running OpenMP with {w} threads ===')
                 env = {'OMP_NUM_THREADS': str(w)}
                 cmd = [os.path.join(RESULTS_DIR, 'openmp'), dataset]
@@ -576,6 +597,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'openmp_{w}t.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'openmp',
@@ -587,10 +609,17 @@ def run_all():
                 }
                 save_result(result)
                 yield sse_event('result', data=result)
-        
+
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run Pthreads
         if 'pthreads' in implementations:
             for w in worker_counts:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 yield sse_event('header', text=f'=== Running Pthreads with {w} threads ===')
                 cmd = [os.path.join(RESULTS_DIR, 'pthreads'), dataset, str(w)]
                 output_lines = []
@@ -600,6 +629,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'pthreads_{w}t.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'pthreads',
@@ -612,9 +642,16 @@ def run_all():
                 save_result(result)
                 yield sse_event('result', data=result)
         
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run MPI
         if 'mpi' in implementations:
             for w in worker_counts:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 yield sse_event('header', text=f'=== Running MPI with {w} processes ===')
                 cmd = ['mpirun', '--allow-run-as-root', '--oversubscribe', '-np', str(w),
                        os.path.join(RESULTS_DIR, 'mpi'), dataset]
@@ -625,6 +662,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'mpi_{w}p.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'mpi',
@@ -637,10 +675,17 @@ def run_all():
                 save_result(result)
                 yield sse_event('result', data=result)
         
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run Hybrid
         if 'hybrid' in implementations:
             hybrid_configs = ["2x2", "2x4", "2x8", "4x2", "4x4", "8x2", "1x16", "2x16", "4x8", "8x4", "16x1"]
             for cfg in hybrid_configs:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 np_val = int(cfg.split('x')[0])
                 nt_val = int(cfg.split('x')[1])
                 yield sse_event('header', text=f'=== Running Hybrid {cfg} ===')
@@ -654,6 +699,7 @@ def run_all():
                     yield sse_event('output', text=line)
                 
                 output = '\n'.join(output_lines)
+                save_log(f'hybrid_{np_val}p_{nt_val}t.log', output)
                 metrics = parse_output(output)
                 result = {
                     'implementation': 'hybrid',
@@ -668,6 +714,10 @@ def run_all():
                 save_result(result)
                 yield sse_event('result', data=result)
         
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run CUDA (simulated if no GPU)
         if 'cuda' in implementations:
             for bs in data.get('block_sizes', [256]):
@@ -680,12 +730,14 @@ def run_all():
                         output_lines.append(line)
                         yield sse_event('output', text=line)
                     output = '\n'.join(output_lines)
+                    save_log('cuda.log', output)
                     metrics = parse_output(output)
                     simulated = False
                 else:
                     lines, metrics = simulate_cuda(dataset, bs)
                     for line in lines:
                         yield sse_event('output', text=line)
+                    save_log('cuda.log', '\n'.join(lines))
                     simulated = True
 
                 result = {
@@ -768,12 +820,13 @@ def get_charts_data():
 
 @app.route('/api/stop', methods=['POST'])
 def stop():
-    """Stop the currently running process."""
-    global current_process
+    """Stop the currently running process and cancel any pending run-all sequence."""
+    global current_process, stop_all_requested
+    stop_all_requested = True
     with output_lock:
         if current_process and current_process.poll() is None:
             current_process.terminate()
-            return jsonify({'success': True, 'message': 'Process terminated'})
+            return jsonify({'success': True, 'message': 'Process stopped'})
     return jsonify({'success': False, 'message': 'No running process'}), 400
 
 # ── Main ─────────────────────────────────────────────────────
