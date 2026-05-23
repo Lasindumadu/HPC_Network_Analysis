@@ -220,9 +220,16 @@ All implementations must produce identical accuracy metrics (97.072%) — this c
 
 ## Dataset
 
-**UNSW-NB15** — network intrusion detection benchmark dataset
+**UNSW-NB15** — network intrusion detection benchmark dataset · 700,001 records · ~157 MB
 
-Primary dataset path:
+> **The dataset is NOT included in this submission** (file size 157 MB > 10 MB limit).
+> Download it from Google Drive and place it at the path below before running.
+>
+> **Google Drive:** https://drive.google.com/drive/folders/1tqNgeGTsgRTTDDsr46wnJ4Gt4gdxUfzN?usp=sharing
+>
+> See **[IMPORTANT_NOTE.md](IMPORTANT_NOTE.md)** for full setup instructions.
+
+Primary dataset path (required):
 ```
 data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
 ```
@@ -265,8 +272,8 @@ HPC_Network_Analysis/
 │   ├── mpi/network_analysis_mpi.c
 │   ├── hybrid/network_analysis_hybrid.c
 │   └── cuda/network_analysis_cuda.cu
-├── data/
-│   └── UNSW-NB15_1.csv/
+├── data/                              ← NOT in submission (157 MB > limit)
+│   └── UNSW-NB15_1.csv/               ← download from Google Drive
 │       └── UNSW-NB15_1_with_header.csv
 ├── results/
 │   ├── serial / openmp / pthreads / mpi / hybrid / cuda
@@ -312,7 +319,7 @@ All tests use a fixed problem size (700,001 records × 50 passes) with increasin
 | `libomp: not found` | `sudo apt install libomp-dev` |
 | `nvcc: command not found` | `sudo apt install nvidia-cuda-toolkit` |
 | Permission denied on scripts | `chmod +x run_all.sh` |
-| Dataset not found | Verify path: `data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv` |
+| Dataset not found | Download from [Google Drive](https://drive.google.com/drive/folders/1tqNgeGTsgRTTDDsr46wnJ4Gt4gdxUfzN?usp=sharing) → place at `data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv` |
 | MPI fails at 16 processes | Add `--oversubscribe` flag to mpirun |
 | CUDA out of memory | Reduce block size: `./results/cuda "$DATA" 128` |
 
