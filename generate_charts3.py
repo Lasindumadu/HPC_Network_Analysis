@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 """
-generate_charts.py
+generate_charts3.py
 EC7207 — HPC Network Traffic Analysis
 
-Generates performance charts matching the web dashboard UI style.
-Reads data from results/logs/*.log (written by C programs during Run All).
-For CUDA: uses results/logs/cuda.log if present, otherwise falls back to
-          simulated values derived from the serial baseline.
+Generates CPU-only performance charts (no CUDA).
+  - Data source : results/logs/*.log  (saved during Run All in the UI)
+  - CUDA        : intentionally excluded
+
+Output: charts/speedup_v3.png  efficiency_v3.png  execution_time_v3.png
+        charts/throughput_v3.png  all_charts_v3.png
 
 Usage:
-    python3 generate_charts.py           # read saved logs
-    python3 generate_charts.py --rerun   # re-run all programs first
+    python3 generate_charts3.py
 """
 
-import os, re, sys, subprocess
+import os, re, sys
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -22,17 +23,13 @@ import numpy as np
 # ─────────────────────────────────────────────────────────────
 # Paths
 # ─────────────────────────────────────────────────────────────
-BASE     = os.path.dirname(os.path.abspath(__file__))
-RESULTS  = os.path.join(BASE, 'results')
-LOG_DIR  = os.path.join(RESULTS, 'logs')
-CHARTS   = os.path.join(BASE, 'charts')
-DATASET  = 'data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv'
+BASE    = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(BASE, 'results', 'logs')
+CHARTS  = os.path.join(BASE, 'charts')
+os.makedirs(CHARTS, exist_ok=True)
 
-os.makedirs(CHARTS,  exist_ok=True)
-os.makedirs(LOG_DIR, exist_ok=True)
-
-WORKERS         = [1, 2, 4, 8, 16]
-HYBRID_CONFIGS  = ["2x2","2x4","2x8","4x2","4x4","8x2","1x16","2x16","4x8","8x4","16x1"]
+WORKERS        = [1, 2, 4, 8, 16]
+HYBRID_CONFIGS = ["2x2","2x4","2x8","4x2","4x4","8x2","1x16","2x16","4x8","8x4","16x1"]
 
 LOG_SERIAL = os.path.join(LOG_DIR, 'serial.log')
 LOG_OMP    = {w: os.path.join(LOG_DIR, f'openmp_{w}t.log')   for w in WORKERS}
@@ -40,9 +37,6 @@ LOG_PTH    = {w: os.path.join(LOG_DIR, f'pthreads_{w}t.log') for w in WORKERS}
 LOG_MPI    = {w: os.path.join(LOG_DIR, f'mpi_{w}p.log')      for w in WORKERS}
 LOG_HYB    = {c: os.path.join(LOG_DIR,
               f"hybrid_{c.split('x')[0]}p_{c.split('x')[1]}t.log") for c in HYBRID_CONFIGS}
-LOG_CUDA   = os.path.join(LOG_DIR, 'cuda.log')
-
-BIN = lambda name: os.path.join(RESULTS, name)
 
 # ─────────────────────────────────────────────────────────────
 # Colors — exact match to UI CSS / JS variables
@@ -61,7 +55,6 @@ OMP_C  = '#58a6ff'
 PTH_C  = '#bc8cff'
 MPI_C  = '#db6d28'
 HYB_C  = '#3fb950'
-CUDA_C = '#e3b341'
 
 try:
     from matplotlib import font_manager as _fm
@@ -97,59 +90,15 @@ def parse_log(text):
         'rmse':       get(r'RMSE:\s+([\d.]+)'),
     }
 
-def run_and_save(cmd, path, env=None):
-    full_env = os.environ.copy()
-    if env:
-        full_env.update(env)
-    print(f'  $ {" ".join(str(a) for a in cmd)}')
-    r = subprocess.run(cmd, capture_output=True, text=True, env=full_env, cwd=BASE)
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(r.stdout)
-    return r.stdout
-
 # ─────────────────────────────────────────────────────────────
-# Load / run data
+# Load CPU results from log files
 # ─────────────────────────────────────────────────────────────
 
-force = '--rerun' in sys.argv
-
-def _logs_complete():
-    need = [LOG_SERIAL] + list(LOG_OMP.values()) + list(LOG_PTH.values()) + \
-           list(LOG_MPI.values()) + list(LOG_HYB.values())
-    return all(os.path.exists(p) for p in need)
-
-if force or not _logs_complete():
-    print('Running all benchmarks...\n')
-    env0 = os.environ.copy()
-    print('[1/5] Serial')
-    run_and_save([BIN('serial'), DATASET], LOG_SERIAL)
-    print('[2/5] OpenMP')
-    for w in WORKERS:
-        e = env0.copy(); e['OMP_NUM_THREADS'] = str(w)
-        run_and_save([BIN('openmp'), DATASET], LOG_OMP[w], env=e)
-    print('[3/5] Pthreads')
-    for w in WORKERS:
-        run_and_save([BIN('pthreads'), DATASET, str(w)], LOG_PTH[w])
-    print('[4/5] MPI')
-    for w in WORKERS:
-        run_and_save(['mpirun','--allow-run-as-root','--oversubscribe',
-                      '-np', str(w), BIN('mpi'), DATASET], LOG_MPI[w])
-    print('[5/5] Hybrid')
-    for cfg in HYBRID_CONFIGS:
-        np_v, nt_v = cfg.split('x')
-        e = env0.copy(); e['OMP_NUM_THREADS'] = nt_v
-        run_and_save(['mpirun','--allow-run-as-root','--oversubscribe',
-                      '-np', np_v, BIN('hybrid'), DATASET], LOG_HYB[cfg], env=e)
-else:
-    print(f'Using saved logs from {LOG_DIR}/  (--rerun to re-execute)\n')
-
-# Parse CPU results
 serial_d = parse_log(read_log(LOG_SERIAL))
 omp_d    = {w: parse_log(read_log(LOG_OMP[w])) for w in WORKERS}
 pth_d    = {w: parse_log(read_log(LOG_PTH[w])) for w in WORKERS}
 mpi_d    = {w: parse_log(read_log(LOG_MPI[w])) for w in WORKERS}
 
-# Hybrid: best speedup per total-worker count
 hyb_by_total = {}
 for cfg in HYBRID_CONFIGS:
     np_v, nt_v = int(cfg.split('x')[0]), int(cfg.split('x')[1])
@@ -159,29 +108,6 @@ for cfg in HYBRID_CONFIGS:
         prev = hyb_by_total.get(total)
         if prev is None or (d['speedup'] or 0) > (prev.get('speedup') or 0):
             hyb_by_total[total] = d
-
-# CUDA: real log if available, else simulated from serial baseline
-cuda_log  = read_log(LOG_CUDA) if os.path.exists(LOG_CUDA) else ''
-cuda_parsed = parse_log(cuda_log) if cuda_log else {}
-if cuda_parsed.get('speedup'):
-    cuda_d    = cuda_parsed
-    cuda_sim  = False
-    cuda_label = 'CUDA (GPU)'
-else:
-    cuda_sim  = True
-    cuda_label = 'CUDA (sim)'
-    st = serial_d.get('time') or 0.4377
-    sp = 9.2
-    st_c = st / sp
-    cuda_d = {
-        'time':       st_c,
-        'throughput': int(700001 / st_c),
-        'speedup':    sp,
-        'efficiency': 100.0,
-        'accuracy':   97.072,
-        'f1':         58.518,
-        'rmse':       0.171126,
-    }
 
 # ─────────────────────────────────────────────────────────────
 # Style helpers
@@ -209,7 +135,8 @@ def _legend(ax, **kw):
               fontsize=8, framealpha=0.9, handlelength=1.6, **kw)
 
 def _nan(lst):
-    return [v if (v is not None and not (isinstance(v, float) and np.isnan(v))) else np.nan for v in lst]
+    return [v if (v is not None and not (isinstance(v, float) and np.isnan(v))) else np.nan
+            for v in lst]
 
 def _vals(d_by_w, field, workers=WORKERS):
     return _nan([d_by_w.get(w, {}).get(field) for w in workers])
@@ -218,8 +145,7 @@ def _vals(d_by_w, field, workers=WORKERS):
 # Chart drawing functions
 # ─────────────────────────────────────────────────────────────
 
-def draw_speedup(ax, workers, omp_d, pth_d, mpi_d, hyb_by_total,
-                 cuda_d, cuda_sim, cuda_label):
+def draw_speedup(ax, workers, omp_d, pth_d, mpi_d, hyb_by_total):
     x = np.array(workers, dtype=float)
 
     # Ideal y=x line
@@ -243,19 +169,10 @@ def draw_speedup(ax, workers, omp_d, pth_d, mpi_d, hyb_by_total,
     hx = sorted(w for w in hyb_by_total if w in workers)
     if hx:
         hy = _nan([hyb_by_total[w].get('speedup') for w in hx])
-        ax.plot(hx, hy, color=HYB_C, linewidth=2, marker='D',
-                markersize=5, markeredgewidth=0, label='Hybrid', zorder=4)
+        ax.plot(hx, hy, color=HYB_C, linewidth=2, marker='D', markersize=5,
+                markeredgewidth=0, label='Hybrid', zorder=4)
 
-    # CUDA star at last x position
-    if cuda_d and cuda_d.get('speedup'):
-        sp = cuda_d['speedup']
-        ax.scatter([x[-1]], [sp], marker='*', color=CUDA_C, s=200,
-                   zorder=6, label=f'{cuda_label}: {sp:.2f}×')
-        ax.annotate(f'{sp:.2f}×', xy=(x[-1], sp), xytext=(4, 6),
-                    textcoords='offset points', color=CUDA_C,
-                    fontsize=7.5, fontweight='bold', fontfamily=FONT)
-
-    _style(ax, 'Speedup vs Workers', 'Workers (Threads / Processes)', 'Speedup (×)',
+    _style(ax, 'Speedup vs Workers (CPU only)', 'Workers (Threads / Processes)', 'Speedup (×)',
            x, [str(w) for w in workers])
     ax.set_ylim(bottom=0)
     _legend(ax)
@@ -279,32 +196,30 @@ def draw_efficiency(ax, workers, omp_d, pth_d, mpi_d, hyb_by_total):
     hx = sorted(w for w in hyb_by_total if w in workers)
     if hx:
         hy = _nan([hyb_by_total[w].get('efficiency') for w in hx])
-        ax.plot(hx, hy, color=HYB_C, linewidth=2, marker='D',
-                markersize=5, markeredgewidth=0, label='Hybrid', zorder=4)
+        ax.plot(hx, hy, color=HYB_C, linewidth=2, marker='D', markersize=5,
+                markeredgewidth=0, label='Hybrid', zorder=4)
 
-    _style(ax, 'Parallel Efficiency (%)', 'Workers (Threads / Processes)', 'Efficiency (%)',
+    _style(ax, 'Parallel Efficiency (%) — CPU only', 'Workers (Threads / Processes)', 'Efficiency (%)',
            x, [str(w) for w in workers])
     ax.set_ylim(bottom=0)
     _legend(ax)
 
 
 def draw_bar_chart(ax, workers, serial_d, omp_d, pth_d, mpi_d,
-                   hyb_by_total, cuda_d, field, title, ylabel):
-    x_labels = [str(w) for w in workers] + ['GPU']
-    n_cat    = len(x_labels)
-    xi       = np.arange(n_cat)
+                   hyb_by_total, field, title, ylabel):
+    x_labels = [str(w) for w in workers]
+    xi       = np.arange(len(x_labels))
     bw       = 0.14
-    # 5 CPU slots centered, CUDA separate at GPU position
+    # 5 implementations: Serial, OpenMP, Pthreads, MPI, Hybrid
     cpu_off  = np.array([-2, -1, 0, 1, 2], dtype=float) * bw
-    cuda_off = 0.0  # centered at GPU index
 
-    # ── Serial — only at workers[0] (index 0) ──────────────────
+    # Serial — only at workers[0] (index 0, slot -2)
     sv = serial_d.get(field)
     if sv:
         ax.bar(xi[0] + cpu_off[0], sv, bw, color=SER_C, alpha=0.85,
                label='Serial', zorder=3)
 
-    # ── OpenMP, Pthreads, MPI ───────────────────────────────────
+    # OpenMP, Pthreads, MPI
     for slot, (d_by_w, c, lbl) in enumerate(
             [(omp_d, OMP_C, 'OpenMP'),
              (pth_d, PTH_C, 'Pthreads'),
@@ -317,7 +232,7 @@ def draw_bar_chart(ax, workers, serial_d, omp_d, pth_d, mpi_d,
                        label=lbl if first else '', zorder=3)
                 first = False
 
-    # ── Hybrid ──────────────────────────────────────────────────
+    # Hybrid
     first = True
     for i, w in enumerate(workers):
         if w in hyb_by_total:
@@ -327,14 +242,7 @@ def draw_bar_chart(ax, workers, serial_d, omp_d, pth_d, mpi_d,
                        label='Hybrid' if first else '', zorder=3)
                 first = False
 
-    # ── CUDA — at GPU index ─────────────────────────────────────
-    cv = cuda_d.get(field) if cuda_d else None
-    if cv:
-        ax.bar(xi[-1] + cuda_off, cv, bw * 2.2, color=CUDA_C, alpha=0.85,
-               label='CUDA', zorder=3)
-
-    _style(ax, title, 'Workers (Threads / Processes)', ylabel,
-           xi, x_labels)
+    _style(ax, title, 'Workers (Threads / Processes)', ylabel, xi, x_labels)
     ax.set_ylim(bottom=0)
     _legend(ax)
 
@@ -343,29 +251,28 @@ def draw_bar_chart(ax, workers, serial_d, omp_d, pth_d, mpi_d,
 # Generate all charts
 # ─────────────────────────────────────────────────────────────
 
-print('Generating charts...')
+print('Generating CPU-only charts (no CUDA)...')
 
 SUPTITLE = (
-    "EC7207 — HPC Network Traffic Analysis: Performance Results\n"
+    "EC7207 — HPC Network Traffic Analysis: CPU Performance Results\n"
     "Dataset: UNSW-NB15 · 700,001 records · Repeat ×50 · "
     "EG/2021/4426 · EG/2021/4432 · EG/2021/4433"
 )
 
-# Helper: draw a single chart into `ax`
 def _speedup(ax):
-    draw_speedup(ax, WORKERS, omp_d, pth_d, mpi_d, hyb_by_total, cuda_d, cuda_sim, cuda_label)
+    draw_speedup(ax, WORKERS, omp_d, pth_d, mpi_d, hyb_by_total)
 def _efficiency(ax):
     draw_efficiency(ax, WORKERS, omp_d, pth_d, mpi_d, hyb_by_total)
 def _time(ax):
-    draw_bar_chart(ax, WORKERS, serial_d, omp_d, pth_d, mpi_d, hyb_by_total, cuda_d,
-                   'time', 'Execution Time (seconds / pass)', 'Time (seconds)')
+    draw_bar_chart(ax, WORKERS, serial_d, omp_d, pth_d, mpi_d, hyb_by_total,
+                   'time', 'Execution Time (seconds / pass) — CPU only', 'Time (seconds)')
 def _throughput(ax):
-    draw_bar_chart(ax, WORKERS, serial_d, omp_d, pth_d, mpi_d, hyb_by_total, cuda_d,
-                   'throughput', 'Throughput (records / sec)', 'Throughput (rec/s)')
+    draw_bar_chart(ax, WORKERS, serial_d, omp_d, pth_d, mpi_d, hyb_by_total,
+                   'throughput', 'Throughput (records / sec) — CPU only', 'Throughput (rec/s)')
 
 # Individual PNG files
-for fn, name in [(_speedup,'speedup'), (_efficiency,'efficiency'),
-                 (_time,'execution_time'), (_throughput,'throughput')]:
+for fn, name in [(_speedup,'speedup_v3'), (_efficiency,'efficiency_v3'),
+                 (_time,'execution_time_v3'), (_throughput,'throughput_v3')]:
     fig, ax = plt.subplots(figsize=(9, 5.5), facecolor=BG)
     fn(ax)
     fig.tight_layout(pad=1.5)
@@ -383,11 +290,9 @@ _efficiency(axes[0][1])
 _time(axes[1][0])
 _throughput(axes[1][1])
 fig.tight_layout(pad=2.2)
-out = os.path.join(CHARTS, 'all_charts.png')
+out = os.path.join(CHARTS, 'all_charts_v3.png')
 fig.savefig(out, dpi=150, bbox_inches='tight', facecolor=BG)
 plt.close(fig)
-print('  ✓ charts/all_charts.png')
+print('  ✓ charts/all_charts_v3.png')
 
-print(f'\nDone. Charts saved to charts/')
-if cuda_sim:
-    print('  Note: CUDA result is simulated (no GPU log found).')
+print('\nDone. CPU-only charts saved to charts/')

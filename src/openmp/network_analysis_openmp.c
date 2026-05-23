@@ -13,9 +13,8 @@
  *   #pragma omp atomic to avoid race conditions.
  *
  * CORRECTNESS GUARANTEE:
- *   Identical detect() function to serial and MPI.
- *   Confusion matrix must match exactly:
- *     TP=32552  FP=8712  FN=12780  TN=28288
+ *   Identical detect() function to all other implementations.
+ *   All produce the same accuracy (97.072%) and confusion matrix.
  *
  * COMPILATION:
  *   gcc -Wall -O2 -std=c11 -fopenmp -lm \
@@ -194,7 +193,7 @@ static int detect(Row *r) {
  * ═══════════════════════════════════════════════ */
 int main(int argc, char *argv[]) {
     const char *file = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
+        "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv";
 
     int nthreads = omp_get_max_threads();   /* read OMP_NUM_THREADS env variable — controls how many threads the parallel region will use */
 
@@ -266,7 +265,6 @@ int main(int argc, char *argv[]) {
             int pred = (detect(&r) >= ATTACK_THRESHOLD) ? 1 : 0;
             int act  = fi(&r, C_LABEL);   /* ground truth — validation only */
 
-            //free_row(&r);
 
             local_sse += (double)(pred - act) * (pred - act);
             local_tot++;
@@ -279,9 +277,7 @@ int main(int argc, char *argv[]) {
                 else                        local_FN++;
             }
 
-            //free_row(&r);
         }
-        /* end parallel for */
 
         /* accumulate across repetitions */
         sse += local_sse;
@@ -374,7 +370,6 @@ int main(int argc, char *argv[]) {
         fprintf(lf, "RMSE:      %.6f \n",   rmse);
         fprintf(lf, "Single-pass time: %.4fs\n", single_time);
         fprintf(lf, "Total time (x%d): %.4fs\n", REPEAT_FACTOR, elapsed);
-        /* re-read serial time to save speedup/efficiency in log */
         FILE *st = fopen("../../results/serial_time.txt", "r");
         if (!st) st = fopen("serial_time.txt", "r");
         if (st) {

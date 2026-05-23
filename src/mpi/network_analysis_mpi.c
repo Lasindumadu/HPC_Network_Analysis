@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
 
     const char *file = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
+        "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv";
 
     /* Only rank 0 prints the header — prevents N duplicate lines */
     if (rank == 0) {
