@@ -423,6 +423,7 @@ function initCharts() {
     const textColor  = '#484f58';
     const labelColor = '#8b949e';
 
+    const SER  = '#6b7c93';
     const OMP  = '#58a6ff';
     const PTH  = '#bc8cff';
     const MPI  = '#db6d28';
@@ -494,7 +495,7 @@ function initCharts() {
             ]
         },
         options: { ...baseOpts, scales: { ...baseOpts.scales,
-            y: { ...baseOpts.scales.y, min: 0, max: 130, title: { display: true, text: 'Efficiency (%)', color: labelColor, font: { size: 11 } } }
+            y: { ...baseOpts.scales.y, min: 0, title: { display: true, text: 'Efficiency (%)', color: labelColor, font: { size: 11 } } }
         }}
     });
 
@@ -503,6 +504,7 @@ function initCharts() {
         data: {
             labels: [],
             datasets: [
+                { label: 'Serial',   data: [], backgroundColor: SER  + 'cc', borderRadius: 3 },
                 { label: 'OpenMP',   data: [], backgroundColor: OMP  + 'aa', borderRadius: 3 },
                 { label: 'Pthreads', data: [], backgroundColor: PTH  + 'aa', borderRadius: 3 },
                 { label: 'MPI',      data: [], backgroundColor: MPI  + 'aa', borderRadius: 3 },
@@ -520,6 +522,7 @@ function initCharts() {
         data: {
             labels: [],
             datasets: [
+                { label: 'Serial',   data: [], backgroundColor: SER  + 'cc', borderRadius: 3 },
                 { label: 'OpenMP',   data: [], backgroundColor: OMP  + 'aa', borderRadius: 3 },
                 { label: 'Pthreads', data: [], backgroundColor: PTH  + 'aa', borderRadius: 3 },
                 { label: 'MPI',      data: [], backgroundColor: MPI  + 'aa', borderRadius: 3 },
@@ -575,27 +578,35 @@ async function updateCharts() {
         charts.efficiency.data.datasets[3].data = getChartData(data.hybrid,   labels, 'efficiency');
         charts.efficiency.update();
 
-        // Time + Throughput (CUDA shown as single bar at "GPU" label)
+        // Time + Throughput (Serial at workers=1, CUDA as single bar at "GPU" label)
         const barLabels = labels.length ? labels : [];
         const cudaLabels = [...barLabels, 'GPU'];
 
+        // Latest serial entry for the baseline bar
+        const serialEntry = data.serial && data.serial.length
+            ? data.serial[data.serial.length - 1] : null;
+        const serialTimeData     = barLabels.map(w => (w === 1 && serialEntry) ? serialEntry.time       : null);
+        const serialThroughput   = barLabels.map(w => (w === 1 && serialEntry) ? serialEntry.throughput : null);
+
         charts.time.data.labels = cudaLabels;
-        charts.time.data.datasets[0].data = [...getChartData(data.openmp,   barLabels, 'time'), null];
-        charts.time.data.datasets[1].data = [...getChartData(data.pthreads, barLabels, 'time'), null];
-        charts.time.data.datasets[2].data = [...getChartData(data.mpi,      barLabels, 'time'), null];
-        charts.time.data.datasets[3].data = [...getChartData(data.hybrid,   barLabels, 'time'), null];
-        charts.time.data.datasets[4].data = [
+        charts.time.data.datasets[0].data = [...serialTimeData, null];
+        charts.time.data.datasets[1].data = [...getChartData(data.openmp,   barLabels, 'time'), null];
+        charts.time.data.datasets[2].data = [...getChartData(data.pthreads, barLabels, 'time'), null];
+        charts.time.data.datasets[3].data = [...getChartData(data.mpi,      barLabels, 'time'), null];
+        charts.time.data.datasets[4].data = [...getChartData(data.hybrid,   barLabels, 'time'), null];
+        charts.time.data.datasets[5].data = [
             ...barLabels.map(() => null),
             data.cuda && data.cuda.length ? data.cuda[0].time : null
         ];
         charts.time.update();
 
         charts.throughput.data.labels = cudaLabels;
-        charts.throughput.data.datasets[0].data = [...getChartData(data.openmp,   barLabels, 'throughput'), null];
-        charts.throughput.data.datasets[1].data = [...getChartData(data.pthreads, barLabels, 'throughput'), null];
-        charts.throughput.data.datasets[2].data = [...getChartData(data.mpi,      barLabels, 'throughput'), null];
-        charts.throughput.data.datasets[3].data = [...getChartData(data.hybrid,   barLabels, 'throughput'), null];
-        charts.throughput.data.datasets[4].data = [
+        charts.throughput.data.datasets[0].data = [...serialThroughput, null];
+        charts.throughput.data.datasets[1].data = [...getChartData(data.openmp,   barLabels, 'throughput'), null];
+        charts.throughput.data.datasets[2].data = [...getChartData(data.pthreads, barLabels, 'throughput'), null];
+        charts.throughput.data.datasets[3].data = [...getChartData(data.mpi,      barLabels, 'throughput'), null];
+        charts.throughput.data.datasets[4].data = [...getChartData(data.hybrid,   barLabels, 'throughput'), null];
+        charts.throughput.data.datasets[5].data = [
             ...barLabels.map(() => null),
             data.cuda && data.cuda.length ? data.cuda[0].throughput : null
         ];
