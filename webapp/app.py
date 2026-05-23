@@ -27,6 +27,7 @@ output_buffer = []
 output_lock = threading.Lock()
 current_process = None
 is_running = False
+stop_all_requested = False
 
 # Ensure directories exist
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -541,6 +542,9 @@ def run_all():
     
     @stream_with_context
     def generate():
+        global stop_all_requested
+        stop_all_requested = False   # reset on each new run-all
+
         # Run serial first for baseline
         if 'serial' in implementations:
             yield sse_event('header', text='=== Running Serial Baseline ===')
@@ -563,10 +567,17 @@ def run_all():
             }
             save_result(result)
             yield sse_event('result', data=result)
-        
+
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run OpenMP
         if 'openmp' in implementations:
             for w in worker_counts:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 yield sse_event('header', text=f'=== Running OpenMP with {w} threads ===')
                 env = {'OMP_NUM_THREADS': str(w)}
                 cmd = [os.path.join(RESULTS_DIR, 'openmp'), dataset]
@@ -588,10 +599,17 @@ def run_all():
                 }
                 save_result(result)
                 yield sse_event('result', data=result)
-        
+
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run Pthreads
         if 'pthreads' in implementations:
             for w in worker_counts:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 yield sse_event('header', text=f'=== Running Pthreads with {w} threads ===')
                 cmd = [os.path.join(RESULTS_DIR, 'pthreads'), dataset, str(w)]
                 output_lines = []
@@ -613,9 +631,16 @@ def run_all():
                 save_result(result)
                 yield sse_event('result', data=result)
         
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run MPI
         if 'mpi' in implementations:
             for w in worker_counts:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 yield sse_event('header', text=f'=== Running MPI with {w} processes ===')
                 cmd = ['mpirun', '--allow-run-as-root', '--oversubscribe', '-np', str(w),
                        os.path.join(RESULTS_DIR, 'mpi'), dataset]
@@ -638,10 +663,17 @@ def run_all():
                 save_result(result)
                 yield sse_event('result', data=result)
         
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run Hybrid
         if 'hybrid' in implementations:
             hybrid_configs = ["2x2", "2x4", "2x8", "4x2", "4x4", "8x2", "1x16", "2x16", "4x8", "8x4", "16x1"]
             for cfg in hybrid_configs:
+                if stop_all_requested:
+                    yield sse_event('done', text='Run All stopped by user.')
+                    return
                 np_val = int(cfg.split('x')[0])
                 nt_val = int(cfg.split('x')[1])
                 yield sse_event('header', text=f'=== Running Hybrid {cfg} ===')
@@ -669,6 +701,10 @@ def run_all():
                 save_result(result)
                 yield sse_event('result', data=result)
         
+        if stop_all_requested:
+            yield sse_event('done', text='Run All stopped by user.')
+            return
+
         # Run CUDA (simulated if no GPU)
         if 'cuda' in implementations:
             for bs in data.get('block_sizes', [256]):
@@ -769,12 +805,13 @@ def get_charts_data():
 
 @app.route('/api/stop', methods=['POST'])
 def stop():
-    """Stop the currently running process."""
-    global current_process
+    """Stop the currently running process and cancel any pending run-all sequence."""
+    global current_process, stop_all_requested
+    stop_all_requested = True
     with output_lock:
         if current_process and current_process.poll() is None:
             current_process.terminate()
-            return jsonify({'success': True, 'message': 'Process terminated'})
+            return jsonify({'success': True, 'message': 'Process stopped'})
     return jsonify({'success': False, 'message': 'No running process'}), 400
 
 # ── Main ─────────────────────────────────────────────────────
