@@ -43,7 +43,7 @@ LOG_MPI      = [f"{LOG_DIR}/mpi_{p}p.log"     for p in WORKERS]
 
 # Hybrid configs (np x nt) and their total parallelism
 HYBRID_CONFIGS = ["2x2", "2x4", "2x8", "4x2", "4x4", "8x2", "1x16", "2x16", "4x8", "8x4", "16x1"]
-LOG_HYBRID = {cfg: f"{LOG_DIR}/hybrid_{cfg}.log" for cfg in HYBRID_CONFIGS}
+LOG_HYBRID = {cfg: f"{LOG_DIR}/hybrid_{cfg.split('x')[0]}p_{cfg.split('x')[1]}t.log" for cfg in HYBRID_CONFIGS}
 
 # ── Style ─────────────────────────────────────────────────────
 BG       = "#0b0f14"
