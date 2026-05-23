@@ -262,6 +262,26 @@ async function clearResults() {
         if (result.success) {
             loadHistory();
             updateCharts();
+            clearConsole();
+
+            // Hide Latest Results card and reset all metric values
+            document.getElementById('resultsCard').classList.add('hidden');
+            ['metricTime','metricThroughput','metricSpeedup','metricEfficiency','metricAccuracy','metricF1'].forEach(id => {
+                document.getElementById(id).querySelector('.metric-value').textContent = '—';
+            });
+            ['cmTN','cmFP','cmFN','cmTP'].forEach(id => {
+                document.getElementById(id).textContent = '—';
+            });
+            ['barPrecision','barRecall','barF1'].forEach(id => {
+                document.getElementById(id).style.width = '0%';
+            });
+            ['valPrecision','valRecall','valF1'].forEach(id => {
+                document.getElementById(id).textContent = '—';
+            });
+            document.getElementById('valRMSE').textContent = '—';
+            document.getElementById('valStatus').textContent = '—';
+            document.getElementById('simBadge').classList.add('hidden');
+
             appendConsole('Results history cleared.', 'info');
         }
     } catch (e) {

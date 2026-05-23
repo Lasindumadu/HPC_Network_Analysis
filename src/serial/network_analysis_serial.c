@@ -229,9 +229,7 @@ int main(int argc, char *argv[]) {
     printf("=== Serial Network Traffic Anomaly Detection ===\n");
     memset(ptable, 0, sizeof(ptable));
     printf("File: %s\n", file);
-    printf("Repeat factor: %d
-
-", REPEAT_FACTOR);
+    printf("Repeat factor: %d\n\n", REPEAT_FACTOR);
 
     /* detect columns from header */
     FILE *fp = fopen(file, "r");
