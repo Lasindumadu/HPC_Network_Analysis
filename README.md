@@ -205,6 +205,8 @@ chmod +x run_all.sh
 
 ```bash
 python3 generate_charts.py
+python3 generate_charts2.py
+python3 generate_charts3.py
 # Charts saved to charts/
 ```
 
@@ -262,8 +264,11 @@ The block size argument (256) sets CUDA threads per block. Typical values: 128, 
 HPC_Network_Analysis/
 ├── Makefile
 ├── README.md
+├── IMPORTANT_NOTE.md
 ├── run_all.sh
 ├── generate_charts.py
+├── generate_charts2.py
+├── generate_charts3.py
 ├── verify_results.py
 ├── src/
 │   ├── serial/network_analysis_serial.c
