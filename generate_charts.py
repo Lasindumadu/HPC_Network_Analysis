@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # ── Config ────────────────────────────────────────────────────
-DATASET  = "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv"
+DATASET  = "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv"
 SERIAL   = "./results/serial"
 OPENMP   = "./results/openmp"
 PTHREADS = "./results/pthreads"
@@ -353,7 +353,7 @@ print("  ✓ charts/throughput.png")
 fig, axes = plt.subplots(2, 2, figsize=(14, 10)); fig.patch.set_facecolor(BG)
 fig.suptitle(
     "EC7207 — HPC Network Traffic Analysis: Performance Results\n"
-    "Dataset: UNSW-NB15 · ~82,332 records · Repeat x50 · "
+    "Dataset: UNSW-NB15 · 700,001 records · Repeat x50 · "
     "EG/2021/4426 · EG/2021/4432 · EG/2021/4433",
     color=TEXT, fontsize=11, y=1.01
 )

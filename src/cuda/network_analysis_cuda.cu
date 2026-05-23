@@ -12,13 +12,12 @@
  *
  * CORRECTNESS GUARANTEE:
  *   Identical weights to serial/OpenMP/MPI/Pthreads.
- *   TP=32552  FP=8712  FN=12780  TN=28288
  *
  * COMPILATION:
  *   nvcc -O2 -std=c++11 -o results/cuda src/cuda/network_analysis_cuda.cu
  *
  * RUNNING:
- *   ./results/cuda data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv
+ *   ./results/cuda data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
  *   ./results/cuda data/... 256    # custom block size
  */
 
@@ -239,7 +238,7 @@ static double cpu_now(void) {
  * ════════════════════════════════════════════════════════════════ */
 int main(int argc, char *argv[]) {
     const char *file = argc > 1 ? argv[1] :
-        "data/UNSW_NB15_training-set.csv/UNSW_NB15_training-set.csv";
+        "data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv";
     int block_size = argc > 2 ? atoi(argv[2]) : 256;
     if (block_size < 32)   block_size = 32;
     if (block_size > 1024) block_size = 1024;

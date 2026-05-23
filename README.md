@@ -56,7 +56,7 @@ Detection runs purely on traffic features. Ground-truth labels are used **only f
 | Hybrid 2×2 | 4 | 0.115 | 3.83× | 96% |
 | Hybrid 4×2 | 8 | 0.065 | 6.82× | 85% |
 | Hybrid 4×4 | 16 | 0.071 | 6.20× | 39% |
-| CUDA | Tesla T4 | 0.0024 | ~183× | — |
+| CUDA | Tesla T4 | 0.0022 | 532.40× | — |
 
 > Super-linear speedups (>100%) at low worker counts occur because parallel implementations load the full dataset into RAM once, while serial re-reads from disk each repeat pass.
 
