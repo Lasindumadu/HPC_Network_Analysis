@@ -1,4 +1,5 @@
 # HPC Network Traffic Analysis
+<<<<<<< HEAD
 ## EC7207 — High Performance Computing
 
 **Team Members:**
@@ -8,244 +9,158 @@
 | EG/2021/4432 | Bandara KMTON |
 | EG/2021/4433 | Bandara LRTD |
 ** End**
+=======
+**EC7207 — High Performance Computing**  
+**Team:** EG/2021/4426 · EG/2021/4432 · EG/2021/4433
+
+>>>>>>> origin/main
 ---
 
-## Project Overview
+## Overview
 
-Parallel computing techniques applied to real-time network traffic anomaly detection using the **UNSW-NB15 dataset** (700,001 records). Six implementations — Serial, OpenMP, POSIX Threads, MPI, Hybrid MPI+OpenMP, and CUDA — are benchmarked for speedup, efficiency, and classification accuracy.
+This project implements a **network intrusion detection system** across six parallelisation strategies and benchmarks their performance on the [UNSW-NB15](https://research.unsw.edu.au/projects/unsw-nb15-dataset) dataset (700,001 records).
 
-Detection runs purely on traffic features. Ground-truth labels are used **only for validation** (accuracy, RMSE, confusion matrix).
+Each implementation applies an identical scoring engine to classify network flows as *normal* or *attack* using traffic features only — no labels used during detection. Labels are used only for validation (accuracy, confusion matrix).
 
 ---
 
 ## Implementations
 
-| Variant | Paradigm | Source File | Workers |
-|---------|----------|-------------|---------|
-| Serial | Baseline | `src/serial/network_analysis_serial.c` | 1 |
-| OpenMP | Shared Memory | `src/openmp/network_analysis_openmp.c` | 1, 2, 4, 8, 16 |
-| Pthreads | Shared Memory | `src/pthreads/network_analysis_pthread.c` | 1, 2, 4, 8, 16 |
-| MPI | Distributed Memory | `src/mpi/network_analysis_mpi.c` | 1, 2, 4, 8, 16 |
-| Hybrid | MPI + OpenMP | `src/hybrid/network_analysis_hybrid.c` | 2×2, 2×4, 4×2, 4×4, 8×2, … |
-| CUDA | GPU (massively parallel) | `src/cuda/network_analysis_cuda.cu` | GPU blocks × threads |
+| Implementation | Source | Parallelism Model |
+|---|---|---|
+| Serial | `src/serial/network_analysis_serial.c` | Baseline — single thread |
+| OpenMP | `src/openmp/network_analysis_openmp.c` | Shared memory, fork-join |
+| Pthreads | `src/pthreads/network_analysis_pthread.c` | Shared memory, manual threads |
+| MPI | `src/mpi/network_analysis_mpi.c` | Distributed memory, message passing |
+| Hybrid | `src/hybrid/network_analysis_hybrid.c` | MPI ranks × OpenMP threads |
+| CUDA | `src/cuda/network_analysis_cuda.cu` | GPU — one thread per record |
 
----
-
-## Measured Performance Results
-
-**Dataset:** `UNSW-NB15_1_with_header.csv` — 700,001 records, REPEAT_FACTOR = 50
-
-| Implementation | Workers | Time (s/pass) | Speedup | Efficiency |
-|----------------|---------|---------------|---------|------------|
-| Serial | 1 | 0.4405 | 1.00× | 100% |
-| OpenMP | 1 | 0.298 | 1.48× | 148% |
-| OpenMP | 2 | 0.139 | 3.16× | 158% |
-| OpenMP | 4 | 0.078 | 5.64× | 141% |
-| OpenMP | 8 | 0.065 | 6.74× | 84% |
-| OpenMP | 16 | 0.063 | 7.02× | 44% |
-| Pthreads | 1 | 0.298 | 1.48× | 148% |
-| Pthreads | 2 | 0.151 | 2.91× | 146% |
-| Pthreads | 4 | 0.084 | 5.22× | 131% |
-| Pthreads | 8 | 0.061 | 7.19× | 90% |
-| Pthreads | 16 | 0.058 | 7.56× | 47% |
-| MPI | 1 | 0.319 | 1.38× | 138% |
-| MPI | 2 | 0.166 | 2.66× | 133% |
-| MPI | 4 | 0.092 | 4.80× | 120% |
-| MPI | 8 | 0.071 | 6.17× | 77% |
-| MPI | 16 | 0.074 | 5.97× | 37% |
-| Hybrid 2×2 | 4 | 0.115 | 3.83× | 96% |
-| Hybrid 4×2 | 8 | 0.065 | 6.82× | 85% |
-| Hybrid 4×4 | 16 | 0.071 | 6.20× | 39% |
-| CUDA | GPU | 0.048 | 9.20× | — |
-
-> Super-linear speedups (>100%) at low worker counts occur because parallel implementations load the full dataset into RAM once, while serial re-reads from disk each repeat pass.
-
-**Accuracy (all implementations, identical):**
-| Metric | Value |
-|--------|-------|
-| Accuracy | 97.072% |
-| Precision | 53.154% |
-| Recall | 65.087% |
-| F1 Score | 58.518% |
-| RMSE | 0.171126 |
-| TP / TN / FP / FN | 14,457 / 665,048 / 12,741 / 7,755 |
-
----
-
-## Detection Engine
-
-Each record is scored using traffic features only. Threshold = 4; score ≥ 4 → classified as attack.
-
-**Score rules (same across all 6 implementations):**
-
-| Feature | Condition | Score |
-|---------|-----------|-------|
-| state | INT | +5 |
-| dttl | 60 or 253 | +5 |
-| proto | unas/sctp/any/gre/ospf | +5 |
-| service | pop3/ssl/snmp | +5 |
-| ct_state_ttl | == 2 | +3 |
-| dttl | == 0 | +3 |
-| sttl | 254 or 255 | +2 |
-| service | dns | +2 |
-| ct_src_dport_ltm | > 10 | +2 |
-| sload | > 1M / 10M / 50M | +1 each |
-| rate | > 100K / 166K | +1 each |
-| dpkts==0 && spkts>2 | | +1 |
-| ct_srv_src | > 20 | +1 |
-| sjit or djit | > 1000 | +1 |
-| sttl | == 31 | −4 |
-| dttl | == 29 | −4 |
-| ct_state_ttl | == 0 | −3 |
-| state | CON or REQ | −2 |
-
----
-
-## Quick Start
-
-### Prerequisites
-
-```bash
-# Ubuntu / WSL
-sudo apt update
-sudo apt install -y gcc libomp-dev openmpi-bin libopenmpi-dev python3 python3-pip
-
-# CUDA (requires NVIDIA GPU)
-sudo apt install nvidia-cuda-toolkit
-# or download from https://developer.nvidia.com/cuda-downloads
-
-pip3 install flask matplotlib numpy
-```
-
-### Build
-
-```bash
-make clean
-make all        # builds Serial, OpenMP, Pthreads, MPI, Hybrid, CUDA
-```
-
-**Individual build commands:**
-```bash
-# Serial
-gcc -Wall -O2 -std=c11 -lm -o results/serial src/serial/network_analysis_serial.c
-
-# OpenMP
-gcc -Wall -O2 -std=c11 -fopenmp -lm -o results/openmp src/openmp/network_analysis_openmp.c
-
-# Pthreads
-gcc -Wall -O2 -std=c11 -pthread -lm -o results/pthreads src/pthreads/network_analysis_pthread.c
-
-# MPI
-mpicc -Wall -O2 -std=c11 -lm -o results/mpi src/mpi/network_analysis_mpi.c
-
-# Hybrid MPI + OpenMP
-mpicc -Wall -O2 -std=c11 -fopenmp -lm -o results/hybrid src/hybrid/network_analysis_hybrid.c
-
-# CUDA
-nvcc -O2 -std=c++11 -o results/cuda src/cuda/network_analysis_cuda.cu
-```
-
----
-
-## Run via Web Dashboard (Recommended)
-
-```bash
-cd webapp
-pip3 install -r requirements.txt
-python3 app.py
-# Open http://localhost:5000
-```
-
-Click **Run All Benchmarks** — all six implementations run in sequence, charts update live with speedup, efficiency, execution time, and throughput graphs.
-
----
-
-## Run via Terminal
-
-```bash
-DATA="data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv"
-
-# 1. Serial (run first — generates serial_time.txt for speedup baseline)
-./results/serial "$DATA"
-
-# 2. OpenMP
-for t in 1 2 4 8 16; do
-  OMP_NUM_THREADS=$t ./results/openmp "$DATA"
-done
-
-# 3. Pthreads
-for t in 1 2 4 8 16; do
-  ./results/pthreads "$DATA" $t
-done
-
-# 4. MPI
-for p in 1 2 4 8 16; do
-  mpirun --allow-run-as-root --oversubscribe -np $p ./results/mpi "$DATA"
-done
-
-# 5. Hybrid
-for cfg in 2x2 2x4 2x8 4x2 4x4 8x2 1x16 2x16 4x8 8x4 16x1; do
-  np=$(echo $cfg | cut -dx -f1)
-  nt=$(echo $cfg | cut -dx -f2)
-  OMP_NUM_THREADS=$nt mpirun --allow-run-as-root --oversubscribe -np $np ./results/hybrid "$DATA"
-done
-
-# 6. CUDA
-./results/cuda "$DATA" 256
-```
-
-### Automated Script
-
-```bash
-chmod +x run_all.sh
-./run_all.sh
-```
-
-### Generate Static Charts
-
-```bash
-python3 generate_charts.py
-# Charts saved to charts/
-```
-
-### Verify Correctness
-
-```bash
-python3 verify_results.py
-```
-
-All implementations must produce identical accuracy metrics (97.072%) — this confirms the parallel detection engines are all correct.
+All six produce **identical confusion matrix results** — the scoring engine (`detect()`) is deterministic and stateless per record.
 
 ---
 
 ## Dataset
 
-**UNSW-NB15** — network intrusion detection benchmark dataset
+The UNSW-NB15 dataset is **not included** in this repository (157 MB exceeds the submission limit).
 
-Primary dataset path:
-```
-data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
-```
+**Download:** https://drive.google.com/drive/folders/1tqNgeGTsgRTTDDsr46wnJ4Gt4gdxUfzN?usp=sharing
 
-The CSV header is parsed dynamically — no hardcoded column indices. Required fields: `state`, `proto`, `service`, `spkts`, `dpkts`, `rate`, `sttl`, `dttl`, `sload`, `sloss`, `dloss`, `sjit`, `djit`, `ct_srv_src`, `ct_state_ttl`, `ct_src_dport_ltm`, `label`.
+After downloading, place the file at:
+
+```
+HPC_Network_Analysis/
+└── data/
+    └── UNSW-NB15_1.csv/
+        └── UNSW-NB15_1_with_header.csv   ← place here
+```
 
 ---
 
-## CUDA Implementation
+## Quick Start
 
-The CUDA kernel runs one thread per record — massively parallel scoring on GPU.
+### 1. Install Dependencies
 
-**Compilation:**
 ```bash
-nvcc -O2 -std=c++11 -o results/cuda src/cuda/network_analysis_cuda.cu
+chmod +x setup.sh && ./setup.sh
 ```
 
-**Run:**
+Or manually:
+
 ```bash
+sudo apt update
+sudo apt install -y gcc libopenmpi-dev mpirun python3-pip
+pip3 install -r webapp/requirements.txt
+```
+
+### 2. Build All Implementations
+
+```bash
+make all
+```
+
+To build a single implementation:
+
+```bash
+make results/serial
+make results/openmp
+make results/pthreads
+make results/mpi
+make results/hybrid
+make results/cuda      # requires nvcc + CUDA-capable GPU
+```
+
+### 3. Run Benchmarks
+
+**All at once (shell script):**
+
+```bash
+chmod +x run_all.sh && ./run_all.sh
+```
+
+**Individual runs:**
+
+```bash
+# Serial baseline (run this first — other implementations read its time)
+./results/serial data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
+
+# OpenMP — set thread count via environment variable
+OMP_NUM_THREADS=8 ./results/openmp data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
+
+# Pthreads — thread count is a command-line argument
+./results/pthreads data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv 8
+
+# MPI — process count via mpirun
+mpirun --allow-run-as-root -np 4 ./results/mpi data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
+
+# Hybrid — MPI ranks × OpenMP threads (example: 4 × 4 = 16-way)
+OMP_NUM_THREADS=4 mpirun --allow-run-as-root -np 4 ./results/hybrid data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv
+
+# CUDA — optional block size argument (default 256)
 ./results/cuda data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv 256
 ```
 
-The block size argument (256) sets CUDA threads per block. Typical values: 128, 256, 512.
+### 4. Web Dashboard
+
+```bash
+cd webapp && python3 app.py
+# Open http://localhost:5000
+```
+
+The dashboard lets you run any implementation interactively, view live output, and plot speedup/efficiency/throughput charts.
+
+### 5. Generate Charts (PNG)
+
+```bash
+python3 generate_charts_all.py     # generates all chart variants
+# or individually:
+python3 generate_charts.py         # uses log files, CUDA simulated if no GPU
+python3 generate_charts2.py        # includes hardcoded Tesla T4 CUDA results
+python3 generate_charts3.py        # CPU-only charts (no CUDA)
+```
+
+Charts are saved to `charts/`.
+
+### 6. Verify Correctness
+
+```bash
+python3 verify_results.py
+```
+
+Compares all parallel implementations against the serial baseline. All confusion matrix values must match exactly.
+
+---
+
+## Results Summary (UNSW-NB15, 700,001 records, Repeat ×50)
+
+| Implementation | Workers | Time (s/pass) | Speedup | Efficiency | Throughput (rec/s) |
+|---|---|---|---|---|---|
+| Serial | 1 | 0.4320 | 1.00× | 100% | 1,620,360 |
+| OpenMP | 8 | 0.0758 | 7.09× | 88.6% | 9,234,284 |
+| Pthreads | 8 | 0.0632 | 8.50× | 106.3% | 11,075,275 |
+| Hybrid | 8×16 | 0.0095 | 56.81× | 44.4% | 8,701,575 |
+| CUDA (Tesla T4) | GPU | 0.0022 | 532.40× | — | 321,824,052 |
+
+**Detection accuracy:** 97.072% on UNSW-NB15 (EXCELLENT)
 
 ---
 
@@ -253,95 +168,65 @@ The block size argument (256) sets CUDA threads per block. Typical values: 128, 
 
 ```
 HPC_Network_Analysis/
-├── Makefile
-├── README.md
-├── run_all.sh
-├── generate_charts.py
-├── verify_results.py
 ├── src/
-│   ├── serial/network_analysis_serial.c
-│   ├── openmp/network_analysis_openmp.c
-│   ├── pthreads/network_analysis_pthread.c
-│   ├── mpi/network_analysis_mpi.c
-│   ├── hybrid/network_analysis_hybrid.c
-│   └── cuda/network_analysis_cuda.cu
-├── data/
-│   └── UNSW-NB15_1.csv/
-│       └── UNSW-NB15_1_with_header.csv
-├── results/
-│   ├── serial / openmp / pthreads / mpi / hybrid / cuda
-│   ├── serial_time.txt
-│   └── logs/
-├── charts/
-│   ├── speedup.png
-│   ├── efficiency.png
-│   ├── execution_time.png
-│   ├── throughput.png
-│   └── all_charts.png
-└── webapp/
-    ├── app.py
-    ├── requirements.txt
-    ├── templates/index.html
-    └── static/
-        ├── css/style.css
-        └── js/app.js
+│   ├── serial/
+│   │   ├── network_analysis_serial.c
+│   │   └── analyze_features.py        # feature distribution analysis
+│   ├── openmp/
+│   │   └── network_analysis_openmp.c
+│   ├── pthreads/
+│   │   └── network_analysis_pthread.c
+│   ├── mpi/
+│   │   └── network_analysis_mpi.c
+│   ├── hybrid/
+│   │   └── network_analysis_hybrid.c
+│   └── cuda/
+│       └── network_analysis_cuda.cu
+├── webapp/
+│   ├── app.py                         # Flask backend
+│   ├── requirements.txt
+│   ├── templates/index.html
+│   └── static/
+│       ├── css/style.css
+│       └── js/app.js
+├── data/                              # ← dataset goes here (not in repo)
+├── results/                           # compiled binaries + timing files
+│   └── logs/                          # per-run log files read by charts
+├── charts/                            # generated PNG charts
+├── docs/
+│   └── design_decisions.md            # scoring weight rationale
+├── Makefile
+├── run_all.sh
+├── setup.sh
+├── cleanup.sh
+├── generate_charts.py
+├── generate_charts2.py
+├── generate_charts3.py
+├── generate_charts_all.py
+├── verify_results.py
+└── README.md
 ```
 
 ---
 
-## Performance Analysis
+## Compile-Time Constants (`src/config.h`)
 
-### Speedup & Efficiency
+Key parameters shared across all implementations:
 
-```
-Speedup    = T_serial / T_parallel
-Efficiency = (Speedup / Workers) × 100%
-```
+| Constant | Value | Description |
+|---|---|---|
+| `REPEAT_FACTOR` | 50 | Dataset passes per run (for stable timing) |
+| `ATTACK_THRESHOLD` | 4 | Score ≥ this → classified as attack |
+| `MAX_RECORDS` | 750,000 | Buffer size for in-memory loading |
+| `MAX_FIELDS` | 50 | Max CSV columns per row |
+| `FIELD_LEN` | 64 | Max characters per CSV field |
 
-### Strong Scaling
-
-All tests use a fixed problem size (700,001 records × 50 passes) with increasing worker count. Super-linear speedup at low counts is expected — parallel variants cache the dataset in RAM across passes, while serial re-reads from disk.
-
----
-
-## Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| `mpicc: command not found` | `sudo apt install openmpi-bin libopenmpi-dev` |
-| `libomp: not found` | `sudo apt install libomp-dev` |
-| `nvcc: command not found` | `sudo apt install nvidia-cuda-toolkit` |
-| Permission denied on scripts | `chmod +x run_all.sh` |
-| Dataset not found | Verify path: `data/UNSW-NB15_1.csv/UNSW-NB15_1_with_header.csv` |
-| MPI fails at 16 processes | Add `--oversubscribe` flag to mpirun |
-| CUDA out of memory | Reduce block size: `./results/cuda "$DATA" 128` |
+See `docs/design_decisions.md` for the rationale behind these values.
 
 ---
 
-## Requirements
+## Environment
 
-### Build Dependencies
-```bash
-sudo apt install gcc libomp-dev openmpi-bin libopenmpi-dev nvidia-cuda-toolkit
-```
-
-### Python Dependencies
-```bash
-pip3 install flask matplotlib numpy
-```
-
-### Hardware
-- Multi-core CPU (4+ cores recommended)
-- NVIDIA GPU with CUDA compute capability ≥ 3.5 (for CUDA implementation)
-- 8 GB RAM minimum
-- 10 GB disk space
-
----
-
-## References
-
-1. UNSW-NB15 Dataset — https://www.unsw.adfa.edu.au/unsw-canberra-cyber/cybersecurity/ADFA-NB15-Datasets/
-2. OpenMP — https://www.openmp.org/
-3. MPI Standard — https://www.mpi-forum.org/
-4. CUDA Toolkit — https://developer.nvidia.com/cuda-toolkit
-5. Chart.js — https://www.chartjs.org/
+- **CPU benchmarks:** VMware Ubuntu 22.04, GCC 11, OpenMPI 4.1
+- **CUDA benchmarks:** Google Colab, Tesla T4 GPU, CUDA 12.2, nvcc 12.2
+- **Python:** 3.10+, Flask 2.x, matplotlib 3.x, numpy 1.x
